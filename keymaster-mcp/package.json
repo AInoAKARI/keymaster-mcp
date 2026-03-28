@@ -1,0 +1,46 @@
+{
+  "name": "@akairio/keymaster-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for AKARI Vault Keymaster — secure secret retrieval via Model Context Protocol",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "keymaster-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "vault",
+    "secrets",
+    "keymaster",
+    "akari"
+  ],
+  "author": "AInoAKARI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AInoAKARI/keymaster-mcp.git"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ]
+}
