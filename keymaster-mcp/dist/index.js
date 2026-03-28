@@ -4,87 +4,212 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const mcp_js_1 = require("@modelcontextprotocol/sdk/server/mcp.js");
 const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const zod_1 = require("zod");
-const KEYMASTER_URL = process.env.KEYMASTER_URL || "https://akari-vault-keymaster.onrender.com";
-const KEYMASTER_AUTH_TOKEN = process.env.KEYMASTER_AUTH_TOKEN || "";
-async function keymasterFetch(path, opts) {
-    const url = `${KEYMASTER_URL}${path}`;
-    const headers = {
-        ...opts?.headers,
-    };
-    if (KEYMASTER_AUTH_TOKEN) {
-        headers["Authorization"] = `Bearer ${KEYMASTER_AUTH_TOKEN}`;
+// ── ENV (mcpize per_user credentials) ──
+const KEYMASTER_URL = process.env.USER_KEYMASTER_URL ?? "";
+const KEYMASTER_TOKEN = process.env.USER_KEYMASTER_TOKEN ?? "";
+const KNOWN_SERVICES = [
+    { service: "groq", key_name: "api_key", check_method: "GET", endpoint: "https://api.groq.com/openai/v1/models", auth_type: "bearer" },
+    { service: "moonshot", key_name: "api_key", check_method: "GET", endpoint: "https://api.moonshot.ai/v1/models", auth_type: "bearer" },
+    { service: "moonshot", key_name: "api_key_openclaw", check_method: "GET", endpoint: "https://api.moonshot.ai/v1/models", auth_type: "bearer" },
+    { service: "openai", key_name: "api_key", check_method: "GET", endpoint: "https://api.openai.com/v1/models", auth_type: "bearer" },
+    { service: "deepseek", key_name: "api_key", check_method: "GET", endpoint: "https://api.deepseek.com/models", auth_type: "bearer" },
+    { service: "discord", key_name: "api_key", check_method: "GET", endpoint: "https://discord.com/api/v10/users/@me", auth_type: "bot" },
+    { service: "discord_bot", key_name: "api_key", check_method: "GET", endpoint: "https://discord.com/api/v10/users/@me", auth_type: "bot" },
+    { service: "gemini", key_name: "api_key", check_method: "GET", endpoint: "https://generativelanguage.googleapis.com/v1/models?key={KEY}", auth_type: "query" },
+    { service: "github", key_name: "api_key", check_method: "GET", endpoint: "https://api.github.com/user", auth_type: "bearer" },
+    { service: "google", key_name: "api_key", check_method: "NONE", endpoint: "", auth_type: "" },
+    { service: "claude", key_name: "api_key", check_method: "GET", endpoint: "https://api.anthropic.com/v1/models", auth_type: "x-api-key" },
+    { service: "claude_openclaw", key_name: "api_key", check_method: "GET", endpoint: "https://api.anthropic.com/v1/models", auth_type: "x-api-key" },
+    { service: "notion", key_name: "api_key", check_method: "GET", endpoint: "https://api.notion.com/v1/users/me", auth_type: "notion" },
+    { service: "ibm_quantum", key_name: "api_key", check_method: "NONE", endpoint: "", auth_type: "" },
+    { service: "stripe", key_name: "api_key", check_method: "GET", endpoint: "https://api.stripe.com/v1/balance", auth_type: "basic" },
+    { service: "stripe", key_name: "secret_key", check_method: "GET", endpoint: "https://api.stripe.com/v1/balance", auth_type: "basic" },
+    { service: "stripe", key_name: "webhook_secret", check_method: "NONE", endpoint: "", auth_type: "" },
+    { service: "twitter", key_name: "api_key", check_method: "GET", endpoint: "https://api.twitter.com/2/users/me", auth_type: "bearer" },
+    { service: "vercel", key_name: "api_key", check_method: "GET", endpoint: "https://api.vercel.com/v2/user", auth_type: "bearer" },
+    { service: "shopify", key_name: "api_key", check_method: "NONE", endpoint: "", auth_type: "" },
+    { service: "youtube", key_name: "api_key", check_method: "NONE", endpoint: "", auth_type: "" },
+    { service: "slack", key_name: "api_key", check_method: "GET", endpoint: "https://slack.com/api/auth.test", auth_type: "bearer" },
+    { service: "telegram", key_name: "api_key", check_method: "GET", endpoint: "https://api.telegram.org/bot{KEY}/getMe", auth_type: "url" },
+    { service: "render", key_name: "api_key", check_method: "GET", endpoint: "https://api.render.com/v1/owners", auth_type: "bearer" },
+    { service: "cloudflare", key_name: "api_key", check_method: "GET", endpoint: "https://api.cloudflare.com/client/v4/user/tokens/verify", auth_type: "bearer" },
+    { service: "sendgrid", key_name: "api_key", check_method: "GET", endpoint: "https://api.sendgrid.com/v3/user/profile", auth_type: "bearer" },
+    { service: "spotify", key_name: "api_key", check_method: "NONE", endpoint: "", auth_type: "" },
+    { service: "line", key_name: "api_key", check_method: "NONE", endpoint: "", auth_type: "" },
+    { service: "huggingface", key_name: "api_key", check_method: "GET", endpoint: "https://huggingface.co/api/whoami-v2", auth_type: "bearer" },
+    { service: "replicate", key_name: "api_key", check_method: "GET", endpoint: "https://api.replicate.com/v1/account", auth_type: "bearer" },
+    { service: "supabase", key_name: "api_key", check_method: "NONE", endpoint: "", auth_type: "" },
+    { service: "supabase", key_name: "service_role_key", check_method: "NONE", endpoint: "", auth_type: "" },
+    { service: "resend", key_name: "api_key", check_method: "GET", endpoint: "https://api.resend.com/api-keys", auth_type: "bearer" },
+    { service: "daily", key_name: "api_key", check_method: "GET", endpoint: "https://api.daily.co/v1/rooms", auth_type: "bearer" },
+];
+// ── Keymaster HTTP helper ──
+async function keymasterFetch(service, keyName) {
+    if (!KEYMASTER_URL || !KEYMASTER_TOKEN) {
+        return { ok: false, status: 0, error: "USER_KEYMASTER_URL or USER_KEYMASTER_TOKEN not set" };
     }
-    return fetch(url, { ...opts, headers });
+    try {
+        const url = `${KEYMASTER_URL}/vault/api-key?api_name=${encodeURIComponent(service)}&key_name=${encodeURIComponent(keyName)}`;
+        const res = await fetch(url, {
+            headers: { Authorization: `Bearer ${KEYMASTER_TOKEN}` },
+            signal: AbortSignal.timeout(10_000),
+        });
+        if (!res.ok) {
+            return { ok: false, status: res.status, error: `HTTP ${res.status}` };
+        }
+        const data = (await res.json());
+        const value = typeof data.api_key === "string" ? data.api_key : undefined;
+        if (!value) {
+            return { ok: false, status: res.status, error: "Empty value in response" };
+        }
+        return { ok: true, status: res.status, value };
+    }
+    catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return { ok: false, status: 0, error: msg };
+    }
 }
+// ── Validate a key against its service API ──
+async function validateKey(key, entry) {
+    if (entry.check_method === "NONE") {
+        return { status: "exists", http_code: null };
+    }
+    try {
+        const headers = {};
+        let url = entry.endpoint;
+        switch (entry.auth_type) {
+            case "bearer":
+                headers["Authorization"] = `Bearer ${key}`;
+                break;
+            case "bot":
+                headers["Authorization"] = `Bot ${key}`;
+                break;
+            case "x-api-key":
+                headers["x-api-key"] = key;
+                headers["anthropic-version"] = "2023-06-01";
+                break;
+            case "notion":
+                headers["Authorization"] = `Bearer ${key}`;
+                headers["Notion-Version"] = "2022-06-28";
+                break;
+            case "query":
+            case "url":
+                url = entry.endpoint.replace("{KEY}", key);
+                break;
+            case "basic":
+                headers["Authorization"] = `Basic ${Buffer.from(`${key}:`).toString("base64")}`;
+                break;
+        }
+        const res = await fetch(url, {
+            headers,
+            signal: AbortSignal.timeout(10_000),
+        });
+        const code = res.status;
+        if (code >= 200 && code < 300)
+            return { status: "valid", http_code: code };
+        if (code === 401 || code === 403)
+            return { status: "invalid", http_code: code };
+        return { status: "error", http_code: code };
+    }
+    catch {
+        return { status: "unreachable", http_code: null };
+    }
+}
+// ── MCP Server ──
 const server = new mcp_js_1.McpServer({
     name: "keymaster-mcp",
     version: "1.0.0",
 });
-// --- Tool: health_check ---
-server.tool("health_check", "Check if the Keymaster server is reachable and healthy", {}, async () => {
-    try {
-        const res = await keymasterFetch("/health");
-        const data = await res.json();
-        return { content: [{ type: "text", text: JSON.stringify(data) }] };
-    }
-    catch (e) {
-        return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
-    }
-});
-// --- Tool: get_secret ---
-server.tool("get_secret", "Retrieve a secret from Vault via Keymaster. Use `service` for the api_name (stored under api_keys/{service}), or `path` for a custom Vault path. Optionally specify `key_name` (defaults to 'api_key').", {
-    service: zod_1.z.string().optional().describe("The service/api name (e.g. 'stripe', 'openai'). Maps to Vault path api_keys/{service}"),
-    path: zod_1.z.string().optional().describe("Custom Vault path (overrides service)"),
-    key_name: zod_1.z.string().optional().describe("Key within the secret (default: 'api_key')"),
-}, async ({ service, path, key_name }) => {
-    if (!service && !path) {
-        return { content: [{ type: "text", text: "Error: either 'service' or 'path' is required" }], isError: true };
-    }
-    const params = new URLSearchParams();
-    if (service)
-        params.set("api_name", service);
-    if (path)
-        params.set("path", path);
-    if (key_name)
-        params.set("key_name", key_name);
-    try {
-        const res = await keymasterFetch(`/vault/api-key?${params.toString()}`);
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({ detail: res.statusText }));
-            return { content: [{ type: "text", text: `Error ${res.status}: ${err.detail || res.statusText}` }], isError: true };
-        }
-        const data = await res.json();
-        return { content: [{ type: "text", text: JSON.stringify(data) }] };
-    }
-    catch (e) {
-        return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
-    }
-});
-// --- Tool: list_services ---
-server.tool("list_services", "List known service names that can be used with get_secret. Note: this returns a static discovery endpoint; actual service enumeration depends on Vault configuration.", {
-    name: zod_1.z.string().optional().describe("If provided, returns the form URL for registering a new service"),
-}, async ({ name }) => {
-    if (name) {
-        try {
-            const res = await keymasterFetch("/vault/discover", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name }),
-            });
-            const data = await res.json();
-            return { content: [{ type: "text", text: JSON.stringify(data) }] };
-        }
-        catch (e) {
-            return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
-        }
+// Tool: get_secret
+server.tool("get_secret", "Retrieve an API key from Vault via Keymaster. Returns the secret value for the given service and key name.", {
+    service: zod_1.z.string().describe("Service name (e.g. 'openai', 'stripe', 'groq')"),
+    key_name: zod_1.z.string().default("api_key").describe("Key field name (default: 'api_key')"),
+}, async ({ service, key_name }) => {
+    const result = await keymasterFetch(service, key_name);
+    if (!result.ok) {
+        return {
+            content: [{ type: "text", text: `Error: ${result.error}` }],
+            isError: true,
+        };
     }
     return {
-        content: [{
+        content: [
+            {
                 type: "text",
-                text: "Use get_secret with a service name (e.g. 'stripe', 'openai') to retrieve secrets. Use list_services with a 'name' parameter to discover/register a new service.",
-            }],
+                text: JSON.stringify({ service, key_name, api_key: result.value }),
+            },
+        ],
     };
 });
+// Tool: healthcheck
+server.tool("healthcheck", "Check Keymaster connectivity and validate all known API keys against their service endpoints. Returns a full status report.", {}, async () => {
+    const results = [];
+    // Check Keymaster reachability first
+    const ping = await keymasterFetch("groq", "api_key");
+    if (!ping.ok && ping.status === 0) {
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: `Keymaster unreachable: ${ping.error}\nURL: ${KEYMASTER_URL || "(not set)"}`,
+                },
+            ],
+            isError: true,
+        };
+    }
+    // Check each known service
+    for (const entry of KNOWN_SERVICES) {
+        const fetched = await keymasterFetch(entry.service, entry.key_name);
+        if (!fetched.ok) {
+            results.push({
+                service: entry.service,
+                key_name: entry.key_name,
+                key_status: fetched.status === 0 ? "fetch_error" : "not_found",
+                api_status: "skipped",
+                http_code: null,
+            });
+            continue;
+        }
+        const validation = await validateKey(fetched.value, entry);
+        results.push({
+            service: entry.service,
+            key_name: entry.key_name,
+            key_status: "retrieved",
+            api_status: validation.status,
+            http_code: validation.http_code,
+        });
+    }
+    const summary = {
+        checked_at: new Date().toISOString(),
+        keymaster_url: KEYMASTER_URL,
+        total: results.length,
+        valid: results.filter((r) => r.api_status === "valid").length,
+        exists_only: results.filter((r) => r.api_status === "exists").length,
+        invalid: results.filter((r) => r.api_status === "invalid").length,
+        errors: results.filter((r) => ["not_found", "fetch_error", "unreachable", "error"].includes(r.api_status)).length,
+        results,
+    };
+    return {
+        content: [{ type: "text", text: JSON.stringify(summary, null, 2) }],
+    };
+});
+// Tool: list_services
+server.tool("list_services", "List all known services and their key names that can be used with get_secret.", {}, async () => {
+    const services = KNOWN_SERVICES.map((s) => ({
+        service: s.service,
+        key_name: s.key_name,
+        verifiable: s.check_method !== "NONE",
+    }));
+    return {
+        content: [
+            {
+                type: "text",
+                text: JSON.stringify({ total: services.length, services }, null, 2),
+            },
+        ],
+    };
+});
+// ── Start ──
 async function main() {
     const transport = new stdio_js_1.StdioServerTransport();
     await server.connect(transport);

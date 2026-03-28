@@ -1,4 +1,5 @@
 name: keymaster-mcp
+display_name: "AKARI Keymaster"
 description: "Secure secret retrieval from HashiCorp Vault via Keymaster API. Let your AI agents access API keys safely."
 version: "1.0.0"
 author: AInoAKARI
@@ -6,23 +7,21 @@ repository: https://github.com/AInoAKARI/keymaster-mcp
 license: MIT
 language: typescript
 
+credentials_mode: per_user
+
 tools:
   - name: get_secret
-    description: "Retrieve a secret by service name or Vault path"
+    description: "Retrieve an API key by service name and key name"
+  - name: healthcheck
+    description: "Check Keymaster connectivity and validate all known API keys"
   - name: list_services
-    description: "Discover or register service names"
-  - name: health_check
-    description: "Check Keymaster server health"
-
-pricing:
-  model: usage
-  per_call: 0.001
+    description: "List all known services and their key names"
 
 env:
-  - name: KEYMASTER_URL
-    description: "Keymaster server URL"
+  - name: USER_KEYMASTER_URL
+    description: "Keymaster server URL (e.g. https://akari-vault-keymaster.onrender.com)"
     required: true
-  - name: KEYMASTER_AUTH_TOKEN
+  - name: USER_KEYMASTER_TOKEN
     description: "Bearer token for Keymaster authentication"
     required: true
 

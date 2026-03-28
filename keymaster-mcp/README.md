@@ -6,13 +6,17 @@ MCP (Model Context Protocol) server for [AKARI Vault Keymaster](https://github.c
 
 Wraps the Keymaster HTTP API as MCP tools so that any MCP-compatible client (Claude Desktop, Claude Code, etc.) can securely retrieve secrets from HashiCorp Vault without direct Vault access.
 
+```
+AI Agent <-> MCP (stdio) <-> keymaster-mcp <-> Keymaster API <-> HashiCorp Vault
+```
+
 ## Tools
 
 | Tool | Description |
 |------|-------------|
-| `get_secret` | Retrieve a secret by service name or Vault path |
-| `list_services` | Discover / register service names |
-| `health_check` | Check Keymaster server health |
+| `get_secret` | Retrieve an API key by service name and key name |
+| `healthcheck` | Check Keymaster connectivity and validate all known API keys |
+| `list_services` | List all known services and their key names |
 
 ## Quick Start
 
@@ -22,18 +26,16 @@ Wraps the Keymaster HTTP API as MCP tools so that any MCP-compatible client (Cla
 npm install -g @akairio/keymaster-mcp
 ```
 
-### Configure
+### Environment Variables
 
-Set environment variables:
-
-```bash
-export KEYMASTER_URL="https://your-keymaster-instance.example.com"
-export KEYMASTER_AUTH_TOKEN="your-auth-token"
-```
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `USER_KEYMASTER_URL` | Yes | Keymaster server URL |
+| `USER_KEYMASTER_TOKEN` | Yes | Bearer token for authentication |
 
 ### Use with Claude Desktop
 
-Add to your `claude_desktop_config.json`:
+Add to `claude_desktop_config.json`:
 
 ```json
 {
@@ -41,8 +43,8 @@ Add to your `claude_desktop_config.json`:
     "keymaster": {
       "command": "keymaster-mcp",
       "env": {
-        "KEYMASTER_URL": "https://your-keymaster-instance.example.com",
-        "KEYMASTER_AUTH_TOKEN": "your-auth-token"
+        "USER_KEYMASTER_URL": "https://your-keymaster.example.com",
+        "USER_KEYMASTER_TOKEN": "your-token"
       }
     }
   }
@@ -53,46 +55,42 @@ Add to your `claude_desktop_config.json`:
 
 ```bash
 claude mcp add keymaster keymaster-mcp \
-  -e KEYMASTER_URL=https://your-keymaster-instance.example.com \
-  -e KEYMASTER_AUTH_TOKEN=your-auth-token
+  -e USER_KEYMASTER_URL=https://your-keymaster.example.com \
+  -e USER_KEYMASTER_TOKEN=your-token
 ```
 
 ## Tool Reference
 
 ### get_secret
 
-Retrieve a secret from Vault via Keymaster.
+Retrieve an API key from Vault via Keymaster.
 
 **Parameters:**
-- `service` (string, optional) — Service/API name (e.g. `"stripe"`, `"openai"`). Maps to Vault path `api_keys/{service}`
-- `path` (string, optional) — Custom Vault path (overrides service)
-- `key_name` (string, optional) — Key within the secret (default: `"api_key"`)
+- `service` (string, required) — Service name (e.g. `"openai"`, `"stripe"`, `"groq"`)
+- `key_name` (string, optional) — Key field name (default: `"api_key"`)
 
-Either `service` or `path` is required.
+**Example:** `get_secret({ service: "openai" })` returns `{ service: "openai", key_name: "api_key", api_key: "sk-..." }`
+
+### healthcheck
+
+Check Keymaster connectivity and validate all known API keys against their service endpoints. Returns a full status report with per-service results.
+
+No parameters.
 
 ### list_services
 
-Discover or register service names.
+List all registered services and their key names. Each entry includes whether the key is verifiable (has an API endpoint for validation).
 
-**Parameters:**
-- `name` (string, optional) — If provided, returns the form URL for registering a new service
+No parameters.
 
-### health_check
+## mcpize
 
-Check if the Keymaster server is reachable. No parameters.
-
-## Architecture
-
-```
-AI Agent ←→ MCP (stdio) ←→ keymaster-mcp ←→ Keymaster API ←→ HashiCorp Vault
-```
-
-The MCP server is a thin wrapper. All authentication and Vault access is handled by the Keymaster server.
+This server supports [mcpize](https://mcpize.com/) with `credentials_mode: per_user`. Users provide their own `USER_KEYMASTER_URL` and `USER_KEYMASTER_TOKEN`.
 
 ## Security
 
 - Secrets are transmitted over HTTPS between keymaster-mcp and the Keymaster server
-- The `KEYMASTER_AUTH_TOKEN` is required for secret retrieval
+- Authentication token is required for all operations
 - No secrets are cached or logged by the MCP server
 - Vault is never accessed directly — all operations go through Keymaster
 
