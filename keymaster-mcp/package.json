@@ -1,7 +1,8 @@
 {
-  "name": "@akairio/keymaster-mcp",
-  "version": "1.0.0",
-  "description": "MCP server for AKARI Vault Keymaster — secure secret retrieval via Model Context Protocol",
+  "name": "@akari-os/keymaster-mcp",
+  "version": "1.0.2",
+  "description": "Read-only MCP server for runtime secret retrieval from HashiCorp Vault via Keymaster, built for autonomous AI agents.",
+  "mcpName": "io.github.ainoakari/keymaster-mcp",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -19,16 +20,25 @@
     "vault",
     "secrets",
     "keymaster",
-    "akari"
+    "akari",
+    "hashicorp-vault",
+    "ai-agent",
+    "claude",
+    "secret-management"
   ],
-  "author": "AInoAKARI",
+  "author": "AInoAKARI <aino-akari@ai-akari.ai> (https://ai-akari.ai)",
   "license": "MIT",
+  "homepage": "https://github.com/AInoAKARI/keymaster-mcp#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/AInoAKARI/keymaster-mcp.git"
+    "url": "git+https://github.com/AInoAKARI/keymaster-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AInoAKARI/keymaster-mcp/issues"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "typescript": "^5.4.0",
@@ -41,6 +51,8 @@
   "files": [
     "dist/",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "server.json",
+    ".well-known/"
   ]
 }

@@ -1,0 +1,5 @@
+node_modules/
+mcp-publisher
+.mcpregistry_github_token
+.mcpregistry_registry_token
+*.tgz

@@ -3,9 +3,55 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-// ── ENV (mcpize per_user credentials) ──
-const KEYMASTER_URL = process.env.USER_KEYMASTER_URL ?? "";
-const KEYMASTER_TOKEN = process.env.USER_KEYMASTER_TOKEN ?? "";
+// ── CLI argument parsing ──
+function parseArgs(argv: string[]): { vaultUrl?: string; token?: string; help?: boolean } {
+  const result: { vaultUrl?: string; token?: string; help?: boolean } = {};
+  for (let i = 2; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === "--help" || arg === "-h") {
+      result.help = true;
+    } else if (arg === "--vault-url" && i + 1 < argv.length) {
+      result.vaultUrl = argv[++i];
+    } else if (arg === "--token" && i + 1 < argv.length) {
+      result.token = argv[++i];
+    }
+  }
+  return result;
+}
+
+const cliArgs = parseArgs(process.argv);
+const VERSION = "1.0.2";
+
+if (cliArgs.help) {
+const help = `
+Keymaster MCP Server - The Vault for AI Agents
+
+Usage:
+  keymaster-mcp [options]
+
+Options:
+  --vault-url <url>   Keymaster proxy URL (overrides USER_KEYMASTER_URL env var)
+  --token <token>     Keymaster bearer token (overrides USER_KEYMASTER_TOKEN env var)
+  -h, --help          Show this help message
+
+Environment Variables:
+  USER_KEYMASTER_URL    Keymaster proxy URL
+  USER_KEYMASTER_TOKEN  Keymaster bearer token
+
+Examples:
+  keymaster-mcp --vault-url https://my-keymaster.example.com --token mytoken
+  USER_KEYMASTER_URL=https://... USER_KEYMASTER_TOKEN=... keymaster-mcp
+
+Claude Code:
+  claude mcp add keymaster -- npx -y @akari-os/keymaster-mcp --vault-url <url> --token <token>
+`.trim();
+  console.log(help);
+  process.exit(0);
+}
+
+// ── ENV (mcpize per_user credentials) — CLI args take precedence ──
+const KEYMASTER_URL = cliArgs.vaultUrl ?? process.env.USER_KEYMASTER_URL ?? "";
+const KEYMASTER_TOKEN = cliArgs.token ?? process.env.USER_KEYMASTER_TOKEN ?? "";
 
 // ── Known services (mirrors ~/keymaster/services.conf) ──
 interface ServiceEntry {
@@ -135,7 +181,7 @@ async function validateKey(
 // ── MCP Server ──
 const server = new McpServer({
   name: "keymaster-mcp",
-  version: "1.0.0",
+  version: VERSION,
 });
 
 // Tool: get_secret
@@ -254,6 +300,73 @@ server.tool(
           text: JSON.stringify({ total: services.length, services }, null, 2),
         },
       ],
+    };
+  },
+);
+
+// Tool: list_secrets
+server.tool(
+  "list_secrets",
+  "List all available secret paths (service + key_name combinations) that can be retrieved via get_secret. Returns whether each key is verifiable against its service API.",
+  {},
+  async () => {
+    const secrets = KNOWN_SERVICES.map((s) => ({
+      service: s.service,
+      key_name: s.key_name,
+      path: `${s.service}/${s.key_name}`,
+      verifiable: s.check_method !== "NONE",
+    }));
+
+    // Deduplicate by path
+    const unique = [...new Map(secrets.map((s) => [s.path, s])).values()];
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              total: unique.length,
+              usage: "Use get_secret with the service and key_name values to retrieve a secret.",
+              secrets: unique,
+            },
+            null,
+            2,
+          ),
+        },
+      ],
+    };
+  },
+);
+
+// Tool: rotate_secret
+server.tool(
+  "rotate_secret",
+  "Rotate (replace) a secret in Vault. For security, this operation is not available through the read-only Keymaster proxy.",
+  {
+    service: z.string().describe("Service name (e.g. 'openai', 'stripe')"),
+    key_name: z.string().default("api_key").describe("Key field name (default: 'api_key')"),
+  },
+  async ({ service, key_name }) => {
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: [
+            `Secret rotation for ${service}/${key_name} is not available via this MCP server.`,
+            "",
+            "The Keymaster proxy is a read-only interface to HashiCorp Vault.",
+            "To rotate secrets, use one of the following methods:",
+            "",
+            "  1. Vault UI:  Log in to your Vault instance and update the secret directly.",
+            "  2. Vault CLI: vault kv put <mount>/<path> <key>=<new_value>",
+            "  3. Vault API: PUT /v1/<mount>/data/<path>",
+            "",
+            "This restriction exists by design to prevent accidental or unauthorized secret modification by AI agents.",
+          ].join("\n"),
+        },
+      ],
+      isError: true,
     };
   },
 );

@@ -1,0 +1,122 @@
+{
+  "name": "AKARI Keymaster",
+  "description": "Read-only A2A credential agent for autonomous systems. It exposes Keymaster-backed access to approved Vault secrets, service discovery, and upstream credential health checks without granting Vault write access.",
+  "supportedInterfaces": [
+    {
+      "url": "https://ai-akari.ai/a2a/keymaster/jsonrpc",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    },
+    {
+      "url": "https://ai-akari.ai/a2a/keymaster/rest",
+      "protocolBinding": "HTTP+JSON",
+      "protocolVersion": "1.0"
+    }
+  ],
+  "provider": {
+    "organization": "AInoAKARI",
+    "url": "https://ai-akari.ai"
+  },
+  "version": "1.0.2",
+  "documentationUrl": "https://github.com/AInoAKARI/keymaster-mcp#readme",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "extendedAgentCard": false
+  },
+  "securitySchemes": {
+    "keymasterBearer": {
+      "httpAuthSecurityScheme": {
+        "description": "Bearer token issued for Keymaster access. Send it in the Authorization header.",
+        "scheme": "Bearer",
+        "bearerFormat": "opaque"
+      }
+    }
+  },
+  "securityRequirements": [
+    {
+      "keymasterBearer": []
+    }
+  ],
+  "defaultInputModes": [
+    "application/json",
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "application/json",
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "get_secret",
+      "name": "Get Secret",
+      "description": "Fetch an approved secret for a given service and key name through the read-only Keymaster boundary.",
+      "tags": [
+        "secrets",
+        "vault",
+        "keymaster",
+        "runtime-auth"
+      ],
+      "examples": [
+        "Get the OpenAI API key",
+        "Fetch the Stripe webhook secret",
+        "{\"service\":\"openai\",\"key_name\":\"api_key\"}"
+      ]
+    },
+    {
+      "id": "list_services",
+      "name": "List Services",
+      "description": "List known service and key-name combinations that Keymaster can expose, including whether each key can be verified against an upstream API.",
+      "tags": [
+        "discovery",
+        "service-catalog",
+        "vault"
+      ],
+      "examples": [
+        "List all available secret services",
+        "Which services have verifiable keys?"
+      ]
+    },
+    {
+      "id": "list_secrets",
+      "name": "List Secrets",
+      "description": "Enumerate retrievable secret paths in service/key_name form for workflow planning and audit-safe discovery.",
+      "tags": [
+        "discovery",
+        "secrets",
+        "verification"
+      ],
+      "examples": [
+        "List all retrievable secret paths"
+      ]
+    },
+    {
+      "id": "healthcheck",
+      "name": "Health Check",
+      "description": "Check Keymaster reachability and validate known credentials against their upstream services before agents start critical work.",
+      "tags": [
+        "health",
+        "monitoring",
+        "ops"
+      ],
+      "examples": [
+        "Run a full secret health check"
+      ]
+    },
+    {
+      "id": "rotate_secret",
+      "name": "Rotate Secret Instructions",
+      "description": "Explain the safe Vault-side rotation path when a secret must be changed, while keeping the A2A agent read-only.",
+      "tags": [
+        "rotation",
+        "vault",
+        "security",
+        "read-only"
+      ],
+      "examples": [
+        "How do I rotate the Stripe live key?",
+        "Show the safe path for updating a secret"
+      ]
+    }
+  ]
+}

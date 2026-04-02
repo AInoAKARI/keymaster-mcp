@@ -1,13 +1,32 @@
 name: keymaster-mcp
 display_name: "AKARI Keymaster"
-description: "Secure secret retrieval from HashiCorp Vault via Keymaster API. Let your AI agents access API keys safely."
-version: "1.0.0"
+description: >
+  Read-only runtime secret retrieval from HashiCorp Vault via Keymaster.
+  Built for autonomous agents that need API keys without putting them in .env files,
+  prompts, or shell history.
+version: "1.0.2"
 author: AInoAKARI
 repository: https://github.com/AInoAKARI/keymaster-mcp
+homepage: https://github.com/AInoAKARI/keymaster-mcp
 license: MIT
 language: typescript
 
+runtime: node
+runtime_version: ">=18.0.0"
+install: npm install -g @akari-os/keymaster-mcp
+command: keymaster-mcp
+
 credentials_mode: per_user
+
+env:
+  - name: USER_KEYMASTER_URL
+    description: "Your Keymaster server URL (e.g. https://akari-vault-keymaster.onrender.com)"
+    required: true
+    input_type: url
+  - name: USER_KEYMASTER_TOKEN
+    description: "Your Bearer token for Keymaster authentication"
+    required: true
+    input_type: secret
 
 tools:
   - name: get_secret
@@ -17,13 +36,9 @@ tools:
   - name: list_services
     description: "List all known services and their key names"
 
-env:
-  - name: USER_KEYMASTER_URL
-    description: "Keymaster server URL (e.g. https://akari-vault-keymaster.onrender.com)"
-    required: true
-  - name: USER_KEYMASTER_TOKEN
-    description: "Bearer token for Keymaster authentication"
-    required: true
+categories:
+  - security
+  - developer-tools
 
 tags:
   - secrets
@@ -31,3 +46,4 @@ tags:
   - security
   - api-keys
   - keymaster
+  - hashicorp-vault
