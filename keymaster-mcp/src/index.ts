@@ -20,7 +20,7 @@ function parseArgs(argv: string[]): { vaultUrl?: string; token?: string; help?: 
 }
 
 const cliArgs = parseArgs(process.argv);
-const VERSION = "1.0.2";
+const VERSION = "1.0.3";
 
 if (cliArgs.help) {
 const help = `

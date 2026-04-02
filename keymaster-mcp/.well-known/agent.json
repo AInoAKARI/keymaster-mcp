@@ -2,7 +2,7 @@
   "name": "AKARI Keymaster",
   "description": "Legacy-compatible discovery document for clients that still request /.well-known/agent.json. The canonical latest card is /.well-known/agent-card.json.",
   "url": "https://ai-akari.ai/a2a/keymaster/jsonrpc",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "provider": {
     "organization": "AInoAKARI",
     "url": "https://ai-akari.ai"

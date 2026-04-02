@@ -4,7 +4,7 @@ description: >
   Read-only runtime secret retrieval from HashiCorp Vault via Keymaster.
   Built for autonomous agents that need API keys without putting them in .env files,
   prompts, or shell history.
-version: "1.0.2"
+version: "1.0.3"
 author: AInoAKARI
 repository: https://github.com/AInoAKARI/keymaster-mcp
 homepage: https://github.com/AInoAKARI/keymaster-mcp
