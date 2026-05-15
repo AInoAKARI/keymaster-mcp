@@ -22,7 +22,7 @@ function parseArgs(argv) {
     return result;
 }
 const cliArgs = parseArgs(process.argv);
-const VERSION = "1.0.2";
+const VERSION = "1.0.3";
 if (cliArgs.help) {
     const help = `
 Keymaster MCP Server - The Vault for AI Agents
@@ -309,7 +309,9 @@ async function main() {
     await server.connect(transport);
 }
 main().catch((e) => {
-    console.error("Fatal:", e);
+    // スタックトレースやオブジェクト全体をstderrに出さない（APIキー漏洩防止）
+    const msg = e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200);
+    process.stderr.write(`Fatal: ${msg}\n`);
     process.exit(1);
 });
 //# sourceMappingURL=index.js.map
