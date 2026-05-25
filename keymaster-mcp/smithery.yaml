@@ -1,0 +1,24 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required:
+      - USER_KEYMASTER_URL
+      - USER_KEYMASTER_TOKEN
+    properties:
+      USER_KEYMASTER_URL:
+        type: string
+        description: "URL of your Keymaster server (e.g. https://akari-keymaster.fly.dev)"
+        example: "https://akari-keymaster.fly.dev"
+      USER_KEYMASTER_TOKEN:
+        type: string
+        description: "Bearer token for Keymaster authentication"
+  commandFunction: |-
+    (config) => ({
+      command: "npx",
+      args: ["-y", "@akari-os/keymaster-mcp"],
+      env: {
+        USER_KEYMASTER_URL: config.USER_KEYMASTER_URL,
+        USER_KEYMASTER_TOKEN: config.USER_KEYMASTER_TOKEN
+      }
+    })
