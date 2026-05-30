@@ -1,0 +1,107 @@
+{
+  "name": "AKARI Keymaster",
+  "description": "Read-only credential agent for autonomous AI systems. Exposes Vault-backed secret retrieval, service discovery, and credential health checks via A2A, without granting write access to the secret store.",
+  "url": "https://ai-akari.ai/a2a/keymaster",
+  "provider": {
+    "organization": "AInoAKARI",
+    "url": "https://ai-akari.ai"
+  },
+  "version": "1.0.3",
+  "documentationUrl": "https://github.com/AInoAKARI/keymaster-mcp#readme",
+  "iconUrl": "https://ai-akari.ai/icons/keymaster.png",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "defaultInputModes": ["application/json", "text/plain"],
+  "defaultOutputModes": ["application/json", "text/plain"],
+  "securitySchemes": {
+    "keymasterBearer": {
+      "type": "http",
+      "scheme": "bearer",
+      "bearerFormat": "opaque",
+      "description": "Per-agent Bearer token issued from Keymaster admin. Scoped read-only. No Vault write access is granted."
+    }
+  },
+  "security": [
+    { "keymasterBearer": [] }
+  ],
+  "skills": [
+    {
+      "id": "get_secret",
+      "name": "Get Secret",
+      "description": "Fetch an approved API credential from Vault through the read-only Keymaster boundary. The calling agent receives the secret value at runtime — it is never stored in the agent's config or memory.",
+      "tags": ["secrets", "vault", "keymaster", "runtime-auth", "credentials"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        {
+          "input": { "service": "openai", "key_name": "api_key" },
+          "output": { "service": "openai", "key_name": "api_key", "api_key": "sk-..." }
+        },
+        {
+          "input": { "service": "stripe", "key_name": "secret_key" },
+          "output": { "service": "stripe", "key_name": "secret_key", "api_key": "sk_live_..." }
+        }
+      ]
+    },
+    {
+      "id": "list_services",
+      "name": "List Services",
+      "description": "Enumerate all service/key-name pairs registered in Vault, and whether each key can be verified against its upstream API. Useful for workflow planning before a job starts.",
+      "tags": ["discovery", "service-catalog", "vault", "planning"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        {
+          "input": {},
+          "output": { "total": 34, "services": [{ "service": "openai", "key_name": "api_key", "verifiable": true }] }
+        }
+      ]
+    },
+    {
+      "id": "list_secrets",
+      "name": "List Secrets",
+      "description": "Enumerate all retrievable secret paths in service/key_name form. Suitable for audit-safe discovery before a multi-step pipeline.",
+      "tags": ["discovery", "secrets", "audit"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        {
+          "input": {},
+          "output": { "total": 28, "secrets": [{ "service": "openai", "key_name": "api_key", "path": "openai/api_key", "verifiable": true }] }
+        }
+      ]
+    },
+    {
+      "id": "healthcheck",
+      "name": "Health Check",
+      "description": "Validate all known credentials against their upstream service APIs before agents begin critical work. Returns a structured report with valid/invalid/error counts.",
+      "tags": ["health", "monitoring", "ops", "pre-flight"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        {
+          "input": {},
+          "output": { "total": 34, "valid": 28, "exists_only": 4, "invalid": 1, "errors": 1 }
+        }
+      ]
+    },
+    {
+      "id": "rotate_secret",
+      "name": "Rotate Secret (Guidance)",
+      "description": "When a secret must be changed, returns the safe Vault-side rotation path instead of performing a write. This agent is intentionally read-only — rotation is performed by a human or a dedicated privileged agent directly in Vault.",
+      "tags": ["rotation", "vault", "security", "read-only", "guidance"],
+      "inputModes": ["application/json"],
+      "outputModes": ["text/plain"],
+      "examples": [
+        {
+          "input": { "service": "stripe", "key_name": "secret_key" },
+          "output": "Rotation path: vault kv put akarihearts-v2/api_keys/stripe secret_key=<new_value>"
+        }
+      ]
+    }
+  ],
+  "authenticationNote": "This agent is read-only by design. The Bearer token grants scoped read access to approved Vault paths only. No Vault write operations are exposed. Rotation is handled out-of-band via Vault UI/CLI/API by a human or privileged agent."
+}

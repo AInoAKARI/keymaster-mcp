@@ -10,9 +10,11 @@ startCommand:
         type: string
         description: "URL of your Keymaster server (e.g. https://akari-keymaster.fly.dev)"
         example: "https://akari-keymaster.fly.dev"
+        title: "Keymaster Server URL"
       USER_KEYMASTER_TOKEN:
         type: string
-        description: "Bearer token for Keymaster authentication"
+        description: "Bearer token for Keymaster authentication. Issued per-agent from your Keymaster admin panel."
+        title: "Keymaster Bearer Token"
         format: "password"
   commandFunction: |-
     (config) => ({

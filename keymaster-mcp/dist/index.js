@@ -22,7 +22,7 @@ function parseArgs(argv) {
     return result;
 }
 const cliArgs = parseArgs(process.argv);
-const VERSION = "1.0.2";
+const VERSION = "1.0.3";
 if (cliArgs.help) {
     const help = `
 Keymaster MCP Server - The Vault for AI Agents
