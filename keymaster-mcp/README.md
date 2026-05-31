@@ -1,51 +1,53 @@
 # Keymaster MCP Server
 
-`@akari-os/keymaster-mcp` is the read-only Vault bridge for autonomous agents.
-Agents fetch secrets at runtime through Keymaster instead of carrying API keys in `.env`, prompts, or shell history.
-It is built for Claude Code, Codex, OpenClaw, cron jobs, and A2A agents that need credentials with no human in the loop.
+`@akari-os/keymaster-mcp` is the **read-only Vault bridge** for autonomous AI agents.
 
-<!-- mcp-name: io.github.ainoakari/keymaster-mcp -->
+Agents fetch credentials at runtime through a single MCP tool call —
+they carry no API keys in `.env` files, config files, prompts, or shell history.
 
-## Install In One Command
+---
 
-```bash
-claude mcp add keymaster -- npx -y @akari-os/keymaster-mcp --vault-url https://your-keymaster.example.com --token YOUR_TOKEN
-```
+## Why
 
-If you prefer environment variables instead of inline credentials:
+There is a fundamental mismatch between how secrets are managed for *humans*
+and how they need to flow to *autonomous agents*.
 
-```bash
-claude mcp add keymaster keymaster-mcp \
-  -e USER_KEYMASTER_URL=https://your-keymaster.example.com \
-  -e USER_KEYMASTER_TOKEN=YOUR_TOKEN
-```
+Human-first tools are designed around an interaction model:
+a person unlocks a vault, copies a credential, and pastes it somewhere.
+That model breaks when 4 agents are running in parallel at 3 AM.
 
-## What You Get
+The design philosophy here is simpler:
+**the agent should know what it can ask for, not what the answer is
+until the moment it needs it.**
 
-- `get_secret` fetches `openai/api_key`, `stripe/webhook_secret`, and other approved Vault values on demand.
-- `list_services` and `list_secrets` let agents discover available service/key pairs before a workflow starts.
-- `healthcheck` validates 30+ service credentials against upstream APIs before production jobs fail.
-- `rotate_secret` stays read-only and returns the safe Vault-side rotation path instead of mutating secrets.
+Credentials fetched on demand, not pre-loaded. Rotated in one place, not copied everywhere.
+Read-only by design, so no agent can accidentally overwrite a production secret.
 
-## Why This Exists Next To 1Password
+---
 
-1Password is great when a human is present to unlock a vault and copy a credential.
-Keymaster MCP is for unattended agents that need runtime access over MCP and should never be given full secret-store write access.
+## Before / After
 
-| | 1Password | Keymaster MCP |
+| | Before (`.env` approach) | After (Keymaster MCP) |
 |---|---|---|
-| Primary user | Human operator | Autonomous agent |
-| Retrieval flow | Unlock UI and copy | MCP tool call |
-| Secret-store writes | Full CRUD | No writes |
-| Rotation model | Human updates each consumer | Rotate once in Vault, agents pick up the new value next call |
-| Multi-agent usage | Manual and awkward | Native |
-| Best fit | Person in the loop | No person in the loop |
+| Key storage | File on disk, per agent | Vault — one source of truth |
+| Key in agent memory | Yes, on startup | No — fetched per request |
+| Rotation | Update every agent's `.env` | Rotate once in Vault |
+| Audit trail | Shell history, maybe | Vault audit log |
+| Multi-agent | Copy key N times | Single endpoint, N agents |
+| Accidental write | Possible if leaked | Structurally impossible |
+| Leak surface | `.env`, logs, prompts, history | Bearer token only |
 
-## Quick Config
+---
 
-### Claude Desktop or Codex CLI
+## Install
 
-```json
+```bash
+# Claude Code (recommended)
+claude mcp add keymaster -- npx -y @akari-os/keymaster-mcp \
+  --vault-url https://your-keymaster.example.com \
+  --token YOUR_TOKEN
+
+# Claude Desktop / claude_desktop_config.json
 {
   "mcpServers": {
     "keymaster": {
@@ -60,95 +62,111 @@ Keymaster MCP is for unattended agents that need runtime access over MCP and sho
 }
 ```
 
-### Configuration
+---
 
-| CLI argument | Environment variable | Description |
-|---|---|---|
-| `--vault-url <url>` | `USER_KEYMASTER_URL` | Keymaster proxy URL |
-| `--token <token>` | `USER_KEYMASTER_TOKEN` | Bearer token for Keymaster |
-| `-h, --help` | | Show help |
-
-CLI arguments override environment variables.
-
-## Core Tools
+## Tools
 
 ### `get_secret`
+Retrieve a credential from Vault at runtime.
 
-Retrieve a secret from Vault through the read-only Keymaster boundary.
-
-```json
-get_secret({ "service": "openai" })
 ```
-
-```json
-{
-  "service": "openai",
-  "key_name": "api_key",
-  "api_key": "sk-..."
-}
+Input:  { "service": "openai" }
+Output: { "service": "openai", "key_name": "api_key", "api_key": "sk-..." }
 ```
 
 ### `list_services`
-
-List known service and key-name pairs, including whether each key can be verified upstream.
+Discover all service/key-name pairs registered in Vault,
+including whether each key can be verified upstream.
 
 ### `list_secrets`
-
-List retrievable secret paths in `service/key_name` form.
+Enumerate retrievable paths in `service/key_name` form —
+useful for pipeline planning before a job starts.
 
 ### `healthcheck`
+Validate all known credentials against their upstream APIs before agents begin critical work.
 
-Run a full status sweep across known secrets.
-
-```json
-{
-  "total": 34,
-  "valid": 28,
-  "exists_only": 4,
-  "invalid": 1,
-  "errors": 1
-}
+```
+Output: { "total": 34, "valid": 28, "exists_only": 4, "invalid": 1, "errors": 1 }
 ```
 
 ### `rotate_secret`
+Read-only. Returns the safe Vault-side rotation path —
+it does not perform writes. Rotation is done out-of-band by a human or privileged agent.
 
-Keymaster MCP is intentionally read-only. This tool explains the safe Vault-side rotation path instead of performing writes.
-
-## Runtime Model
-
-```text
-AI Agent
-  -> MCP: get_secret({ service, key_name })
-    -> Keymaster HTTP proxy
-      -> HashiCorp Vault KV v2
-```
-
-Secrets are fetched at runtime, not stored locally. Rotate once in Vault and every agent sees the new value on its next call.
-
-## A2A And Multi-Agent Use
-
-- Each agent fetches its own credentials instead of passing secrets agent-to-agent.
-- `healthcheck` can run before nightly jobs, deploys, or long workflows.
-- The same Vault-backed source can serve Claude Code, Codex, OpenClaw, cron jobs, and remote A2A agents.
-
-## Supported Services
-
-Built-in validation covers 30+ services including OpenAI, Anthropic, Groq, Moonshot, DeepSeek, GitHub, Notion, Stripe, SendGrid, Discord, Telegram, Vercel, Render, Cloudflare, Supabase, Resend, and Daily.
+---
 
 ## Security Model
 
-- Read-only by design
-- TLS transport to Keymaster
-- No secret caching
-- No secret logging
-- Token-scoped access
+```
+AI Agent
+  ──(MCP: get_secret)──►  Keymaster MCP Server
+                              ──(HTTPS + Bearer)──►  Keymaster HTTP Proxy
+                                                         ──(AppRole)──►  HashiCorp Vault KV v2
+```
 
-## Requirements
+- **No secret caching.** Each `get_secret` call hits Vault fresh.
+- **No secret logging.** The MCP server never writes credential values to stdout.
+- **Write-blocked by design.** The Keymaster proxy exposes read-only Vault paths.
+- **Token-scoped.** Each agent gets a Bearer token that cannot exceed its read-only scope.
+- **TLS throughout.** Agent → Keymaster MCP → Keymaster proxy → Vault: all encrypted.
 
-- Node.js 18+
-- A running Keymaster proxy connected to HashiCorp Vault
-- A valid bearer token for that proxy
+---
+
+## Supported Services (30+)
+
+OpenAI · Anthropic · Groq · DeepSeek · Moonshot · Gemini ·
+GitHub · Notion · Stripe · Vercel · Render · Cloudflare ·
+Supabase · Telegram · Slack · Discord · SendGrid · Resend ·
+HuggingFace · Replicate · Twitter · Daily · LINE · Spotify ·
+Shopify · YouTube · IBM Quantum · and more.
+
+---
+
+## Configuration
+
+| CLI argument | Environment variable | Required | Description |
+|---|---|---|---|
+| `--vault-url <url>` | `USER_KEYMASTER_URL` | Yes | Keymaster proxy URL |
+| `--token <token>` | `USER_KEYMASTER_TOKEN` | Yes | Bearer token for Keymaster |
+| `--help` | | | Show help |
+
+CLI arguments override environment variables.
+
+---
+
+## Stack
+
+This MCP server is the client-facing layer of the Keymaster infrastructure:
+
+```
+┌─────────────────────┐
+│  @akari-os/keymaster-mcp  │  ← this package (stdio MCP server)
+└──────────┬──────────┘
+           │ HTTPS
+┌──────────▼──────────┐
+│   Keymaster API      │  ← HTTP proxy (self-hosted or managed)
+└──────────┬──────────┘
+           │ AppRole auth
+┌──────────▼──────────┐
+│  HashiCorp Vault KV  │  ← secret store
+└─────────────────────┘
+```
+
+You bring your own Vault + Keymaster deployment.
+The [AInoAKARI/keymaster](https://github.com/AInoAKARI/keymaster) repo
+contains the server-side Keymaster proxy.
+
+---
+
+## Real-world Use
+
+あかりOS has run this infrastructure in production since early 2025,
+coordinating 4 parallel AI agents (Claude Code × 2 + Codex × 2) across autonomous workflows.
+
+No API key leaks in production.
+
+---
 
 ## License
 
-MIT
+MIT © [AInoAKARI](https://github.com/AInoAKARI)
