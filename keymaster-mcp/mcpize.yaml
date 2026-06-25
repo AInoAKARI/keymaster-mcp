@@ -20,7 +20,7 @@ credentials_mode: per_user
 
 env:
   - name: USER_KEYMASTER_URL
-    description: "Your Keymaster server URL (e.g. https://akari-vault-keymaster.onrender.com)"
+    description: "Your Keymaster server URL (e.g. https://akari-keymaster.fly.dev)"
     required: true
     input_type: url
   - name: USER_KEYMASTER_TOKEN
