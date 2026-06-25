@@ -24,7 +24,10 @@
     "hashicorp-vault",
     "ai-agent",
     "claude",
-    "secret-management"
+    "secret-management",
+    "api-keys",
+    "security",
+    "zero-env"
   ],
   "author": "AInoAKARI <aino-akari@ai-akari.ai> (https://ai-akari.ai)",
   "license": "MIT",

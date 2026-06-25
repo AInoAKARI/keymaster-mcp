@@ -1,5 +1,10 @@
 # Keymaster MCP Server
 
+[![npm version](https://img.shields.io/npm/v/@akari-os/keymaster-mcp.svg)](https://www.npmjs.com/package/@akari-os/keymaster-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/@akari-os/keymaster-mcp.svg)](https://www.npmjs.com/package/@akari-os/keymaster-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![MCPize](https://img.shields.io/badge/MCPize-listed-blue)](https://mcpize.com/mcp/keymaster-mcp)
+
 `@akari-os/keymaster-mcp` is the **read-only Vault bridge** for autonomous AI agents.
 
 Agents fetch credentials at runtime through a single MCP tool call —
