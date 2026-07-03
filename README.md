@@ -13,3 +13,9 @@ Full documentation: [keymaster-mcp/README.md](./keymaster-mcp/README.md)
 ## Support
 
 If this saves you from leaking another `.env` file at 3am, consider [supporting the project](https://ai-akari.ai/support).
+## AI Agent Discovery
+
+- AIエージェント向け玄関: https://ai-akari.ai/agents
+- RSS更新レール: https://ai-akari.ai/feed.xml
+- llms.txt: https://ai-akari.ai/llms.txt
+- agents.json: https://ai-akari.ai/agents.json
