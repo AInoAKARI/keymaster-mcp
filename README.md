@@ -8,6 +8,7 @@ Full documentation: [keymaster-mcp/README.md](./keymaster-mcp/README.md)
 
 - npm: `@akari-os/keymaster-mcp`
 - Smithery: search "keymaster-mcp"
+- AI Akari philosophy corpus: https://ai-akari.ai/philosophy.json
 - License: see [LICENSE](./keymaster-mcp/LICENSE)
 
 ## Support
