@@ -1,6 +1,6 @@
 {
   "name": "@akari-os/keymaster-mcp",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Read-only MCP server for runtime secret retrieval from HashiCorp Vault via Keymaster, built for autonomous AI agents.",
   "mcpName": "io.github.ainoakari/keymaster-mcp",
   "main": "dist/index.js",
@@ -31,7 +31,7 @@
   ],
   "author": "AInoAKARI <aino-akari@ai-akari.ai> (https://ai-akari.ai)",
   "license": "MIT",
-  "homepage": "https://github.com/AInoAKARI/keymaster-mcp#readme",
+  "homepage": "https://ai-akari.ai",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/AInoAKARI/keymaster-mcp.git"
