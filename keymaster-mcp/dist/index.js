@@ -101,7 +101,11 @@ async function keymasterFetch(service, keyName) {
     try {
         const baseUrl = new URL(KEYMASTER_URL);
         const isLoopback = ["127.0.0.1", "localhost", "::1", "[::1]"].includes(baseUrl.hostname);
-        if (baseUrl.username || baseUrl.password || (baseUrl.protocol !== "https:" && !(baseUrl.protocol === "http:" && isLoopback))) {
+        if (baseUrl.username
+            || baseUrl.password
+            || baseUrl.search
+            || baseUrl.hash
+            || (baseUrl.protocol !== "https:" && !(baseUrl.protocol === "http:" && isLoopback))) {
             return { ok: false, status: 0, error: "Invalid Keymaster URL" };
         }
         const endpoint = new URL("/vault/api-key", baseUrl);
@@ -237,7 +241,6 @@ server.tool("healthcheck", "Check Keymaster connectivity and validate all known 
     }
     const summary = {
         checked_at: new Date().toISOString(),
-        keymaster_url: KEYMASTER_URL,
         total: results.length,
         valid: results.filter((r) => r.api_status === "valid").length,
         exists_only: results.filter((r) => r.api_status === "exists").length,

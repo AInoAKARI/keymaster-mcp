@@ -39,6 +39,12 @@ export function resolveKeymasterConfig(
   };
 }
 
+export function resolveIntakeToken(
+  environment: RuntimeEnvironment = process.env,
+): string {
+  return firstNonEmpty(environment.KEYMASTER_TOKEN) ?? "";
+}
+
 export function environmentWithoutKeymasterCredentials(
   environment: RuntimeEnvironment = process.env,
 ): Record<string, string | undefined> {

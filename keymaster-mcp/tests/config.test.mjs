@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   DEFAULT_KEYMASTER_URL,
   environmentWithoutKeymasterCredentials,
+  resolveIntakeToken,
   resolveKeymasterConfig,
 } from "../dist/config.js";
 
@@ -61,6 +62,17 @@ test("existing Keymaster bindings resolve in one place with stable precedence", 
       token: "local-token",
     },
   );
+});
+
+test("human intake uses only the privileged local bootstrap binding", () => {
+  assert.equal(
+    resolveIntakeToken({
+      KEYMASTER_TOKEN: "local-intake-token",
+      USER_KEYMASTER_TOKEN: "read-only-connector-token",
+    }),
+    "local-intake-token",
+  );
+  assert.equal(resolveIntakeToken({ USER_KEYMASTER_TOKEN: "read-only-connector-token" }), "");
 });
 
 test("credentials are not inherited by the Fly tunnel process", () => {

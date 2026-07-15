@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DEFAULT_KEYMASTER_URL = void 0;
 exports.resolveKeymasterConfig = resolveKeymasterConfig;
+exports.resolveIntakeToken = resolveIntakeToken;
 exports.environmentWithoutKeymasterCredentials = environmentWithoutKeymasterCredentials;
 exports.DEFAULT_KEYMASTER_URL = "https://akari-keymaster.fly.dev";
 function firstNonEmpty(...values) {
@@ -26,6 +27,9 @@ function resolveKeymasterConfig(urlOverride, environment = process.env) {
         url: firstNonEmpty(urlOverride, environment.USER_KEYMASTER_URL, environment.KEYMASTER_URL) ?? exports.DEFAULT_KEYMASTER_URL,
         token: "",
     };
+}
+function resolveIntakeToken(environment = process.env) {
+    return firstNonEmpty(environment.KEYMASTER_TOKEN) ?? "";
 }
 function environmentWithoutKeymasterCredentials(environment = process.env) {
     const allowed = new Set([

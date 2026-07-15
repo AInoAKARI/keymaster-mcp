@@ -320,7 +320,7 @@ async function main() {
             throw new Error("Unknown or incomplete argument");
         }
     }
-    const { token } = (0, config_js_1.resolveKeymasterConfig)();
+    const token = (0, config_js_1.resolveIntakeToken)();
     let tunnel;
     let drop;
     try {

@@ -36,3 +36,14 @@ jobs:
         shell: bash
         run: test "${GITHUB_REF_NAME}" = "v$(node -p "require('./package.json').version")"
       - run: npm publish
+      - name: Install MCP Registry publisher
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --show-error --silent --location \
+            "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" \
+            | tar xz mcp-publisher
+      - name: Authenticate to MCP Registry with GitHub OIDC
+        run: ./mcp-publisher login github-oidc
+      - name: Publish MCP Registry metadata
+        run: ./mcp-publisher publish

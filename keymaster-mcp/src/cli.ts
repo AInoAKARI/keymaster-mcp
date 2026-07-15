@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { createConnection, type AddressInfo } from "node:net";
-import { environmentWithoutKeymasterCredentials, resolveKeymasterConfig } from "./config.js";
+import { environmentWithoutKeymasterCredentials, resolveIntakeToken } from "./config.js";
 
 const DEFAULT_TTL_MS = 10 * 60 * 1000;
 const MAX_BODY_BYTES = 65_536;
@@ -347,7 +347,7 @@ async function main(): Promise<void> {
     }
   }
 
-  const { token } = resolveKeymasterConfig();
+  const token = resolveIntakeToken();
   let tunnel: IntakeTunnel | undefined;
   let drop: DropServer | undefined;
   try {

@@ -51,9 +51,16 @@ test("MCP and published docs never advertise or emit raw credential values", asy
   assert.doesNotMatch(joined, /autocomplete="new-password"/);
   assert.doesNotMatch(joined, /"api_key"\s*:\s*"sk[_-]/);
   assert.doesNotMatch(await readFile("src/index.ts", "utf8"), /api_key:\s*result\.value/);
+  assert.doesNotMatch(await readFile("src/index.ts", "utf8"), /keymaster_url:\s*KEYMASTER_URL/);
   assert.doesNotMatch(await readFile("src/index.ts", "utf8"), /console\.error\([^\n]*(?:\be\b|error)/i);
   assert.doesNotMatch(await readFile("src/index.ts", "utf8"), /process\.env/);
   assert.doesNotMatch(await readFile("src/cli.ts", "utf8"), /process\.env/);
+});
+
+test("repository-root release workflow publishes npm before MCP metadata", async () => {
+  const workflow = await readFile("../.github/workflows/publish-npm.yml", "utf8");
+  assert.ok(workflow.indexOf("npm publish") < workflow.indexOf("mcp-publisher publish"));
+  await assert.rejects(readFile(".github/workflows/publish-mcp-registry.yml", "utf8"));
 });
 
 test("human intake defaults to the Fly private port and explicit URLs stay loopback-only", async () => {
