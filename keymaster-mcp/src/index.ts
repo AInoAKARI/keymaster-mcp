@@ -2,6 +2,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { fatalErrorLine, publicRequestError } from "./security.js";
 
 // ── CLI argument parsing ──
 function parseArgs(argv: string[]): { vaultUrl?: string; token?: string; help?: boolean } {
@@ -20,7 +21,7 @@ function parseArgs(argv: string[]): { vaultUrl?: string; token?: string; help?: 
 }
 
 const cliArgs = parseArgs(process.argv);
-const VERSION = "1.0.3";
+const VERSION = "1.0.4";
 
 if (cliArgs.help) {
 const help = `
@@ -122,9 +123,8 @@ async function keymasterFetch(
       return { ok: false, status: res.status, error: "Empty value in response" };
     }
     return { ok: true, status: res.status, value };
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return { ok: false, status: 0, error: msg };
+  } catch {
+    return { ok: false, status: 0, error: publicRequestError() };
   }
 }
 
@@ -232,7 +232,7 @@ server.tool(
         content: [
           {
             type: "text" as const,
-            text: `Keymaster unreachable: ${ping.error}\nURL: ${KEYMASTER_URL || "(not set)"}`,
+            text: `Keymaster unreachable: ${ping.error}`,
           },
         ],
         isError: true,
@@ -265,7 +265,7 @@ server.tool(
 
     const summary = {
       checked_at: new Date().toISOString(),
-      keymaster_url: KEYMASTER_URL,
+      keymaster_configured: Boolean(KEYMASTER_URL && KEYMASTER_TOKEN),
       total: results.length,
       valid: results.filter((r) => r.api_status === "valid").length,
       exists_only: results.filter((r) => r.api_status === "exists").length,
@@ -377,7 +377,7 @@ async function main() {
   await server.connect(transport);
 }
 
-main().catch((e) => {
-  console.error("Fatal:", e);
+main().catch(() => {
+  process.stderr.write(fatalErrorLine());
   process.exit(1);
 });
