@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const mcp_js_1 = require("@modelcontextprotocol/sdk/server/mcp.js");
 const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const zod_1 = require("zod");
+const security_js_1 = require("./security.js");
 // ── CLI argument parsing ──
 function parseArgs(argv) {
     const result = {};
@@ -22,7 +23,7 @@ function parseArgs(argv) {
     return result;
 }
 const cliArgs = parseArgs(process.argv);
-const VERSION = "1.0.3";
+const VERSION = "1.0.4";
 if (cliArgs.help) {
     const help = `
 Keymaster MCP Server - The Vault for AI Agents
@@ -109,9 +110,8 @@ async function keymasterFetch(service, keyName) {
         }
         return { ok: true, status: res.status, value };
     }
-    catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        return { ok: false, status: 0, error: msg };
+    catch {
+        return { ok: false, status: 0, error: (0, security_js_1.publicRequestError)() };
     }
 }
 // ── Validate a key against its service API ──
@@ -196,7 +196,7 @@ server.tool("healthcheck", "Check Keymaster connectivity and validate all known 
             content: [
                 {
                     type: "text",
-                    text: `Keymaster unreachable: ${ping.error}\nURL: ${KEYMASTER_URL || "(not set)"}`,
+                    text: `Keymaster unreachable: ${ping.error}`,
                 },
             ],
             isError: true,
@@ -226,7 +226,7 @@ server.tool("healthcheck", "Check Keymaster connectivity and validate all known 
     }
     const summary = {
         checked_at: new Date().toISOString(),
-        keymaster_url: KEYMASTER_URL,
+        keymaster_configured: Boolean(KEYMASTER_URL && KEYMASTER_TOKEN),
         total: results.length,
         valid: results.filter((r) => r.api_status === "valid").length,
         exists_only: results.filter((r) => r.api_status === "exists").length,
@@ -308,8 +308,8 @@ async function main() {
     const transport = new stdio_js_1.StdioServerTransport();
     await server.connect(transport);
 }
-main().catch((e) => {
-    console.error("Fatal:", e);
+main().catch(() => {
+    process.stderr.write((0, security_js_1.fatalErrorLine)());
     process.exit(1);
 });
 //# sourceMappingURL=index.js.map
