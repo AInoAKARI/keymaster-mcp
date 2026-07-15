@@ -1,6 +1,6 @@
 {
   "name": "AKARI Keymaster",
-  "description": "Read-only A2A credential agent for autonomous systems. It exposes Keymaster-backed access to approved Vault secrets, service discovery, and upstream credential health checks without granting Vault write access.",
+  "description": "Non-disclosing A2A credential agent for approved Vault path discovery, availability checks, and upstream health checks.",
   "supportedInterfaces": [
     {
       "url": "https://ai-akari.ai/a2a/keymaster/jsonrpc",
@@ -17,7 +17,7 @@
     "organization": "AInoAKARI",
     "url": "https://ai-akari.ai"
   },
-  "version": "1.0.3",
+  "version": "1.0.4",
   "documentationUrl": "https://github.com/AInoAKARI/keymaster-mcp#readme",
   "capabilities": {
     "streaming": false,
@@ -48,18 +48,18 @@
   ],
   "skills": [
     {
-      "id": "get_secret",
-      "name": "Get Secret",
-      "description": "Fetch an approved secret for a given service and key name through the read-only Keymaster boundary.",
+      "id": "secret_status",
+      "name": "Secret Status",
+      "description": "Check whether an approved credential is available without returning its value.",
       "tags": [
         "secrets",
         "vault",
         "keymaster",
-        "runtime-auth"
+        "status"
       ],
       "examples": [
-        "Get the OpenAI API key",
-        "Fetch the Stripe webhook secret",
+        "Check whether the OpenAI credential is available",
+        "Check the Stripe webhook credential status",
         "{\"service\":\"openai\",\"key_name\":\"api_key\"}"
       ]
     },
@@ -80,7 +80,7 @@
     {
       "id": "list_secrets",
       "name": "List Secrets",
-      "description": "Enumerate retrievable secret paths in service/key_name form for workflow planning and audit-safe discovery.",
+      "description": "Enumerate approved credential paths in service/key_name form for workflow planning and audit-safe discovery.",
       "tags": [
         "discovery",
         "secrets",
@@ -106,7 +106,7 @@
     {
       "id": "rotate_secret",
       "name": "Rotate Secret Instructions",
-      "description": "Explain the safe Vault-side rotation path when a secret must be changed, while keeping the A2A agent read-only.",
+      "description": "Direct rotation to the Fly-authenticated one-time localhost intake while keeping the A2A agent read-only.",
       "tags": [
         "rotation",
         "vault",

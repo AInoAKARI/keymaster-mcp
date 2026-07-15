@@ -1,12 +1,12 @@
 {
   "name": "AKARI Keymaster",
-  "description": "Read-only credential agent for autonomous AI systems. Exposes Vault-backed secret retrieval, service discovery, and credential health checks via A2A, without granting write access to the secret store.",
+  "description": "Non-disclosing credential agent for approved Vault path discovery, availability checks, and credential health checks via A2A.",
   "url": "https://ai-akari.ai/a2a/keymaster",
   "provider": {
     "organization": "AInoAKARI",
     "url": "https://ai-akari.ai"
   },
-  "version": "1.0.3",
+  "version": "1.0.4",
   "documentationUrl": "https://github.com/AInoAKARI/keymaster-mcp#readme",
   "iconUrl": "https://ai-akari.ai/icons/keymaster.png",
   "capabilities": {
@@ -29,20 +29,20 @@
   ],
   "skills": [
     {
-      "id": "get_secret",
-      "name": "Get Secret",
-      "description": "Fetch an approved API credential from Vault through the read-only Keymaster boundary. The calling agent receives the secret value at runtime — it is never stored in the agent's config or memory.",
-      "tags": ["secrets", "vault", "keymaster", "runtime-auth", "credentials"],
+      "id": "secret_status",
+      "name": "Secret Status",
+      "description": "Check whether an approved credential is available without returning its value.",
+      "tags": ["secrets", "vault", "keymaster", "status", "credentials"],
       "inputModes": ["application/json"],
       "outputModes": ["application/json"],
       "examples": [
         {
           "input": { "service": "openai", "key_name": "api_key" },
-          "output": { "service": "openai", "key_name": "api_key", "api_key": "sk-..." }
+          "output": { "service": "openai", "key_name": "api_key", "status": "available" }
         },
         {
           "input": { "service": "stripe", "key_name": "secret_key" },
-          "output": { "service": "stripe", "key_name": "secret_key", "api_key": "sk_live_..." }
+          "output": { "service": "stripe", "key_name": "secret_key", "status": "available" }
         }
       ]
     },
@@ -63,7 +63,7 @@
     {
       "id": "list_secrets",
       "name": "List Secrets",
-      "description": "Enumerate all retrievable secret paths in service/key_name form. Suitable for audit-safe discovery before a multi-step pipeline.",
+      "description": "Enumerate approved credential paths in service/key_name form. Suitable for audit-safe discovery before a multi-step pipeline.",
       "tags": ["discovery", "secrets", "audit"],
       "inputModes": ["application/json"],
       "outputModes": ["application/json"],
@@ -91,17 +91,17 @@
     {
       "id": "rotate_secret",
       "name": "Rotate Secret (Guidance)",
-      "description": "When a secret must be changed, returns the safe Vault-side rotation path instead of performing a write. This agent is intentionally read-only — rotation is performed by a human or a dedicated privileged agent directly in Vault.",
+      "description": "When a credential must be changed, directs the operator to the Fly-authenticated one-time localhost intake. The MCP agent remains read-only.",
       "tags": ["rotation", "vault", "security", "read-only", "guidance"],
       "inputModes": ["application/json"],
       "outputModes": ["text/plain"],
       "examples": [
         {
           "input": { "service": "stripe", "key_name": "secret_key" },
-          "output": "Rotation path: vault kv put akarihearts-v2/api_keys/stripe secret_key=<new_value>"
+          "output": "Open the private one-time key post; enter the replacement only in its browser form."
         }
       ]
     }
   ],
-  "authenticationNote": "This agent is read-only by design. The Bearer token grants scoped read access to approved Vault paths only. No Vault write operations are exposed. Rotation is handled out-of-band via Vault UI/CLI/API by a human or privileged agent."
+  "authenticationNote": "This agent is read-only and non-disclosing. MCP responses never contain credential values. Rotation uses a separate Fly-authenticated private intake and a one-time localhost browser form."
 }

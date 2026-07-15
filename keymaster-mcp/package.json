@@ -1,15 +1,17 @@
 {
   "name": "@akari-os/keymaster-mcp",
   "version": "1.0.4",
-  "description": "Read-only MCP server for runtime secret retrieval from HashiCorp Vault via Keymaster, built for autonomous AI agents.",
+  "description": "Non-disclosing MCP server for Vault credential discovery and health checks via Keymaster.",
   "mcpName": "io.github.ainoakari/keymaster-mcp",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "keymaster-mcp": "dist/index.js"
+    "keymaster-mcp": "dist/index.js",
+    "keymaster": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
+    "test": "npm run build && node --test tests/*.test.mjs",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "prepublishOnly": "npm run build"
@@ -31,6 +33,9 @@
   ],
   "author": "AInoAKARI <aino-akari@ai-akari.ai> (https://ai-akari.ai)",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "homepage": "https://ai-akari.ai",
   "repository": {
     "type": "git",
@@ -40,13 +45,13 @@
     "url": "https://github.com/AInoAKARI/keymaster-mcp/issues"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "1.29.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "typescript": "^5.4.0",
     "@types/node": "^20.0.0",
-    "ts-node": "^10.9.0"
+    "ts-node": "^10.9.0",
+    "typescript": "^5.4.0"
   },
   "engines": {
     "node": ">=18.0.0"

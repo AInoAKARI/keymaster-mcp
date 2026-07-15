@@ -2,25 +2,28 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { resolveKeymasterConfig } from "./config.js";
 
 // ── CLI argument parsing ──
-function parseArgs(argv: string[]): { vaultUrl?: string; token?: string; help?: boolean } {
-  const result: { vaultUrl?: string; token?: string; help?: boolean } = {};
+function parseArgs(argv: string[]): { vaultUrl?: string; help?: boolean } {
+  const result: { vaultUrl?: string; help?: boolean } = {};
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--help" || arg === "-h") {
       result.help = true;
     } else if (arg === "--vault-url" && i + 1 < argv.length) {
       result.vaultUrl = argv[++i];
-    } else if (arg === "--token" && i + 1 < argv.length) {
-      result.token = argv[++i];
+    } else if (arg === "--token" || arg.startsWith("--token=")) {
+      throw new Error("Secret CLI arguments are not supported");
+    } else {
+      throw new Error("Unknown or incomplete option");
     }
   }
   return result;
 }
 
 const cliArgs = parseArgs(process.argv);
-const VERSION = "1.0.3";
+const VERSION = "1.0.4";
 
 if (cliArgs.help) {
 const help = `
@@ -31,27 +34,25 @@ Usage:
 
 Options:
   --vault-url <url>   Keymaster proxy URL (overrides USER_KEYMASTER_URL env var)
-  --token <token>     Keymaster bearer token (overrides USER_KEYMASTER_TOKEN env var)
   -h, --help          Show this help message
 
 Environment Variables:
   USER_KEYMASTER_URL    Keymaster proxy URL
   USER_KEYMASTER_TOKEN  Keymaster bearer token
 
-Examples:
-  keymaster-mcp --vault-url https://my-keymaster.example.com --token mytoken
-  USER_KEYMASTER_URL=https://... USER_KEYMASTER_TOKEN=... keymaster-mcp
-
 Claude Code:
-  claude mcp add keymaster -- npx -y @akari-os/keymaster-mcp --vault-url <url> --token <token>
+  claude mcp add keymaster -- npx -y @akari-os/keymaster-mcp --vault-url <url>
 `.trim();
   console.log(help);
   process.exit(0);
 }
 
-// ── ENV (mcpize per_user credentials) — CLI args take precedence ──
-const KEYMASTER_URL = cliArgs.vaultUrl ?? process.env.USER_KEYMASTER_URL ?? "";
-const KEYMASTER_TOKEN = cliArgs.token ?? process.env.USER_KEYMASTER_TOKEN ?? "";
+// ── Existing runtime/connector credentials ──
+const keymasterConfig = resolveKeymasterConfig(cliArgs.vaultUrl);
+const KEYMASTER_URL = keymasterConfig.url;
+const KEYMASTER_TOKEN = keymasterConfig.token;
+const NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$/;
+const safeName = z.string().regex(NAME_PATTERN, "Invalid service or key name");
 
 // ── Known services (mirrors ~/keymaster/services.conf) ──
 interface ServiceEntry {
@@ -104,12 +105,22 @@ async function keymasterFetch(
   service: string,
   keyName: string,
 ): Promise<{ ok: boolean; status: number; value?: string; error?: string }> {
+  if (!NAME_PATTERN.test(service) || !NAME_PATTERN.test(keyName)) {
+    return { ok: false, status: 400, error: "Invalid service or key name" };
+  }
   if (!KEYMASTER_URL || !KEYMASTER_TOKEN) {
-    return { ok: false, status: 0, error: "USER_KEYMASTER_URL or USER_KEYMASTER_TOKEN not set" };
+    return { ok: false, status: 0, error: "Keymaster authentication is unavailable" };
   }
   try {
-    const url = `${KEYMASTER_URL}/vault/api-key?api_name=${encodeURIComponent(service)}&key_name=${encodeURIComponent(keyName)}`;
-    const res = await fetch(url, {
+    const baseUrl = new URL(KEYMASTER_URL);
+    const isLoopback = ["127.0.0.1", "localhost", "::1", "[::1]"].includes(baseUrl.hostname);
+    if (baseUrl.username || baseUrl.password || (baseUrl.protocol !== "https:" && !(baseUrl.protocol === "http:" && isLoopback))) {
+      return { ok: false, status: 0, error: "Invalid Keymaster URL" };
+    }
+    const endpoint = new URL("/vault/api-key", baseUrl);
+    endpoint.searchParams.set("api_name", service);
+    endpoint.searchParams.set("key_name", keyName);
+    const res = await fetch(endpoint, {
       headers: { Authorization: `Bearer ${KEYMASTER_TOKEN}` },
       signal: AbortSignal.timeout(10_000),
     });
@@ -122,9 +133,8 @@ async function keymasterFetch(
       return { ok: false, status: res.status, error: "Empty value in response" };
     }
     return { ok: true, status: res.status, value };
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return { ok: false, status: 0, error: msg };
+  } catch {
+    return { ok: false, status: 0, error: "Keymaster request failed" };
   }
 }
 
@@ -184,13 +194,13 @@ const server = new McpServer({
   version: VERSION,
 });
 
-// Tool: get_secret
+// Tool: secret_status
 server.tool(
-  "get_secret",
-  "Retrieve an API key from Vault via Keymaster. Returns the secret value for the given service and key name.",
+  "secret_status",
+  "Check whether a credential is available through Keymaster without returning its value.",
   {
-    service: z.string().describe("Service name (e.g. 'openai', 'stripe', 'groq')"),
-    key_name: z.string().default("api_key").describe("Key field name (default: 'api_key')"),
+    service: safeName.describe("Service name (e.g. 'openai', 'stripe', 'groq')"),
+    key_name: safeName.default("api_key").describe("Key field name (default: 'api_key')"),
   },
   async ({ service, key_name }) => {
     const result = await keymasterFetch(service, key_name);
@@ -204,7 +214,7 @@ server.tool(
       content: [
         {
           type: "text" as const,
-          text: JSON.stringify({ service, key_name, api_key: result.value }),
+          text: JSON.stringify({ service, key_name, status: "available" }),
         },
       ],
     };
@@ -232,7 +242,7 @@ server.tool(
         content: [
           {
             type: "text" as const,
-            text: `Keymaster unreachable: ${ping.error}\nURL: ${KEYMASTER_URL || "(not set)"}`,
+            text: `Keymaster unreachable: ${ping.error}`,
           },
         ],
         isError: true,
@@ -285,7 +295,7 @@ server.tool(
 // Tool: list_services
 server.tool(
   "list_services",
-  "List all known services and their key names that can be used with get_secret.",
+  "List all known services and key names that can be checked with secret_status.",
   {},
   async () => {
     const services = KNOWN_SERVICES.map((s) => ({
@@ -307,7 +317,7 @@ server.tool(
 // Tool: list_secrets
 server.tool(
   "list_secrets",
-  "List all available secret paths (service + key_name combinations) that can be retrieved via get_secret. Returns whether each key is verifiable against its service API.",
+  "List approved credential paths as metadata only. No credential values are returned.",
   {},
   async () => {
     const secrets = KNOWN_SERVICES.map((s) => ({
@@ -327,7 +337,7 @@ server.tool(
           text: JSON.stringify(
             {
               total: unique.length,
-              usage: "Use get_secret with the service and key_name values to retrieve a secret.",
+              usage: "Use secret_status with the service and key_name values to check availability without receiving a value.",
               secrets: unique,
             },
             null,
@@ -344,8 +354,8 @@ server.tool(
   "rotate_secret",
   "Rotate (replace) a secret in Vault. For security, this operation is not available through the read-only Keymaster proxy.",
   {
-    service: z.string().describe("Service name (e.g. 'openai', 'stripe')"),
-    key_name: z.string().default("api_key").describe("Key field name (default: 'api_key')"),
+    service: safeName.describe("Service name (e.g. 'openai', 'stripe')"),
+    key_name: safeName.default("api_key").describe("Key field name (default: 'api_key')"),
   },
   async ({ service, key_name }) => {
     return {
@@ -355,14 +365,9 @@ server.tool(
           text: [
             `Secret rotation for ${service}/${key_name} is not available via this MCP server.`,
             "",
-            "The Keymaster proxy is a read-only interface to HashiCorp Vault.",
-            "To rotate secrets, use one of the following methods:",
-            "",
-            "  1. Vault UI:  Log in to your Vault instance and update the secret directly.",
-            "  2. Vault CLI: vault kv put <mount>/<path> <key>=<new_value>",
-            "  3. Vault API: PUT /v1/<mount>/data/<path>",
-            "",
-            "This restriction exists by design to prevent accidental or unauthorized secret modification by AI agents.",
+            "Use the Fly-authenticated localhost intake command:",
+            `  keymaster drop ${service} --key-name ${key_name} --replace`,
+            "The replacement value must be entered only in the one-time browser form, never in a CLI argument, chat, or log.",
           ].join("\n"),
         },
       ],
@@ -377,7 +382,7 @@ async function main() {
   await server.connect(transport);
 }
 
-main().catch((e) => {
-  console.error("Fatal:", e);
+main().catch(() => {
+  console.error("Fatal: Keymaster MCP failed");
   process.exit(1);
 });

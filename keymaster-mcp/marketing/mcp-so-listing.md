@@ -9,9 +9,8 @@
 
 ## What It Does
 
-Keymaster MCP is a **read-only** bridge between your AI agents and HashiCorp Vault.
-Agents call `get_secret` at runtime to receive credentials — they never carry raw API keys
-in `.env` files, prompts, shell history, or workflow configs.
+Keymaster MCP is a **non-disclosing, read-only** bridge between AI agents and HashiCorp Vault.
+Agents discover approved credential paths and check availability or health without receiving values.
 
 ---
 
@@ -33,12 +32,12 @@ in `.env` files, prompts, shell history, or workflow configs.
 ┌─────────────────────────────────────────────────────────────┐
 │                     AFTER Keymaster MCP                     │
 │                                                             │
-│  AI Agent ──MCP get_secret──► Keymaster ──► HashiCorp Vault │
-│               (runtime fetch)   (read-only)   (source of    │
+│  AI Agent ──status only──────► Keymaster ──► HashiCorp Vault │
+│               (no value)        (read-only)   (source of    │
 │                                               truth)        │
 │                                                             │
 │  ✅  No keys at rest in agent configs                       │
-│  ✅  Keys fetched on demand, not cached                     │
+│  ✅  Values never returned in MCP responses                 │
 │  ✅  Rotate in Vault once → all agents get new key next call │
 │  ✅  MCP server is write-blocked by design                  │
 └─────────────────────────────────────────────────────────────┘
@@ -50,26 +49,10 @@ in `.env` files, prompts, shell history, or workflow configs.
 
 ```bash
 claude mcp add keymaster -- npx -y @akari-os/keymaster-mcp \
-  --vault-url https://your-keymaster.example.com \
-  --token YOUR_TOKEN
+  --vault-url https://your-keymaster.example.com
 ```
 
-Or via environment variables:
-
-```json
-{
-  "mcpServers": {
-    "keymaster": {
-      "command": "npx",
-      "args": ["-y", "@akari-os/keymaster-mcp"],
-      "env": {
-        "USER_KEYMASTER_URL": "https://your-keymaster.example.com",
-        "USER_KEYMASTER_TOKEN": "YOUR_TOKEN"
-      }
-    }
-  }
-}
-```
+Connector credentials are supplied only by the existing runtime secret binding.
 
 ---
 
@@ -77,19 +60,19 @@ Or via environment variables:
 
 | Tool | Description |
 |------|-------------|
-| `get_secret` | Fetch an API key from Vault by service name |
+| `secret_status` | Check credential availability without returning its value |
 | `list_services` | Discover all registered service/key-name pairs |
-| `list_secrets` | Enumerate retrievable secret paths |
+| `list_secrets` | Enumerate approved credential paths |
 | `healthcheck` | Validate 30+ credentials against upstream APIs |
-| `rotate_secret` | Returns the safe Vault-side rotation path (read-only) |
+| `rotate_secret` | Directs rotation to the private one-time localhost intake (read-only) |
 
 ---
 
 ## Example Usage
 
 ```
-Agent: get_secret({ service: "openai" })
-→ { service: "openai", key_name: "api_key", api_key: "sk-..." }
+Agent: secret_status({ service: "openai" })
+→ { service: "openai", key_name: "api_key", status: "available" }
 
 Agent: healthcheck({})
 → { total: 34, valid: 28, exists_only: 4, invalid: 1, errors: 1 }

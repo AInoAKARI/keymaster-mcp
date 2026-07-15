@@ -2,7 +2,7 @@
 
 ## Goal
 
-Expose Keymaster as a discoverable A2A agent so other agents can find one stable place for runtime secret retrieval, secret catalog discovery, and credential health checks.
+Expose Keymaster as a discoverable A2A agent so other agents can find one stable place for non-disclosing credential discovery, availability, and health checks.
 
 ## Canonical Card
 
@@ -19,17 +19,18 @@ The current work publishes the discovery artifacts first. The transport endpoint
 
 | Skill | Purpose |
 |---|---|
-| `get_secret` | Retrieve a scoped secret by `service` and `key_name` |
+| `secret_status` | Check scoped credential availability without returning its value |
 | `list_services` | List known services and key names |
-| `list_secrets` | Enumerate retrievable secret paths |
+| `list_secrets` | Enumerate approved credential paths |
 | `healthcheck` | Validate Keymaster reachability and upstream credential status |
+| `rotate_secret` | Direct rotation to the private one-time localhost intake |
 
 ## Security Model
 
 - Keymaster stays read-only for agents
-- agents receive only the secret they asked for
-- rotation remains outside the agent boundary in Vault
-- secrets should never be passed agent-to-agent when each agent can fetch its own credentials directly
+- agents receive status and metadata only, never credential values
+- rotation remains outside the MCP agent boundary through the Fly-authenticated private intake
+- secrets are entered only in the one-time localhost browser form
 
 ## Latest Spec Alignment
 

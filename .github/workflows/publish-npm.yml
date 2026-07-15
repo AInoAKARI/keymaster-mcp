@@ -1,0 +1,38 @@
+name: Publish npm
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: keymaster-mcp
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+      - name: Use npm with trusted-publisher support
+        run: npm install --global npm@^11.15.0
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - run: npm audit --omit=dev
+      - name: Match tag to package version
+        shell: bash
+        run: test "${GITHUB_REF_NAME}" = "v$(node -p "require('./package.json').version")"
+      - run: npm publish

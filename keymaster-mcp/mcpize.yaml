@@ -1,10 +1,9 @@
 name: keymaster-mcp
 display_name: "AKARI Keymaster"
 description: >
-  Read-only runtime secret retrieval from HashiCorp Vault via Keymaster.
-  Built for autonomous agents that need API keys without putting them in .env files,
-  prompts, or shell history.
-version: "1.0.3"
+  Non-disclosing credential discovery and health checks for HashiCorp Vault via Keymaster.
+  MCP responses contain status and metadata, never credential values.
+version: "1.0.4"
 author: AInoAKARI
 repository: https://github.com/AInoAKARI/keymaster-mcp
 homepage: https://github.com/AInoAKARI/keymaster-mcp
@@ -29,12 +28,16 @@ env:
     input_type: secret
 
 tools:
-  - name: get_secret
-    description: "Retrieve an API key by service name and key name"
+  - name: secret_status
+    description: "Check credential availability without returning its value"
   - name: healthcheck
     description: "Check Keymaster connectivity and validate all known API keys"
   - name: list_services
     description: "List all known services and their key names"
+  - name: list_secrets
+    description: "List approved credential paths as metadata only"
+  - name: rotate_secret
+    description: "Direct rotation to the Fly-authenticated one-time localhost intake"
 
 categories:
   - security

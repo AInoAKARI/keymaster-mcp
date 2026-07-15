@@ -7,10 +7,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![MCPize](https://img.shields.io/badge/MCPize-listed-blue)](https://mcpize.com/mcp/keymaster-mcp)
 
-`@akari-os/keymaster-mcp` is the **read-only Vault bridge** for autonomous AI agents.
+`@akari-os/keymaster-mcp` is the **non-disclosing Vault status bridge** for autonomous AI agents.
 
-Agents fetch credentials at runtime through a single MCP tool call —
-they carry no API keys in `.env` files, config files, prompts, or shell history.
+Agents can discover approved credential paths and verify availability or upstream health.
+MCP responses never contain credential values.
 
 ---
 
@@ -24,10 +24,9 @@ a person unlocks a vault, copies a credential, and pastes it somewhere.
 That model breaks when 4 agents are running in parallel at 3 AM.
 
 The design philosophy here is simpler:
-**the agent should know what it can ask for, not what the answer is
-until the moment it needs it.**
+**the agent should know what exists and whether it works, without receiving the value.**
 
-Credentials fetched on demand, not pre-loaded. Rotated in one place, not copied everywhere.
+Credentials checked on demand, not disclosed. Rotated in one place, not copied everywhere.
 Read-only by design, so no agent can accidentally overwrite a production secret.
 
 ---
@@ -37,10 +36,10 @@ Read-only by design, so no agent can accidentally overwrite a production secret.
 | | Before (`.env` approach) | After (Keymaster MCP) |
 |---|---|---|
 | Key storage | File on disk, per agent | Vault — one source of truth |
-| Key in agent memory | Yes, on startup | No — fetched per request |
+| Key in agent memory | Yes, on startup | No — MCP never returns it |
 | Rotation | Update every agent's `.env` | Rotate once in Vault |
 | Audit trail | Shell history, maybe | Vault audit log |
-| Multi-agent | Copy key N times | Single endpoint, N agents |
+| Multi-agent | Copy key N times | Shared status boundary |
 | Accidental write | Possible if leaked | Structurally impossible |
 | Leak surface | `.env`, logs, prompts, history | Bearer token only |
 
@@ -51,34 +50,31 @@ Read-only by design, so no agent can accidentally overwrite a production secret.
 ```bash
 # Claude Code (recommended)
 claude mcp add keymaster -- npx -y @akari-os/keymaster-mcp \
-  --vault-url https://your-keymaster.example.com \
-  --token YOUR_TOKEN
-
-# Claude Desktop / claude_desktop_config.json
-{
-  "mcpServers": {
-    "keymaster": {
-      "command": "npx",
-      "args": ["-y", "@akari-os/keymaster-mcp"],
-      "env": {
-        "USER_KEYMASTER_URL": "https://your-keymaster.example.com",
-        "USER_KEYMASTER_TOKEN": "YOUR_TOKEN"
-      }
-    }
-  }
-}
+  --vault-url https://your-keymaster.example.com
 ```
+
+Bearer credentials are supplied only through the existing connector/runtime secret binding. They are never shown in examples or accepted as CLI arguments.
+
+### Human key intake
+
+```bash
+keymaster drop npm
+```
+
+`keymaster drop` opens a random, one-time form on `127.0.0.1`. The input is a password field, is never printed or written to a temporary file, and the listener self-destructs after one submission or ten minutes. Intake reaches the private Fly port through a Fly-authenticated loopback tunnel; the public Keymaster service does not expose writes.
+
+Use `--replace` for an intentional rotation. The replacement value still goes only through the browser form.
 
 ---
 
 ## Tools
 
-### `get_secret`
-Retrieve a credential from Vault at runtime.
+### `secret_status`
+Check credential availability without receiving its value.
 
 ```
 Input:  { "service": "openai" }
-Output: { "service": "openai", "key_name": "api_key", "api_key": "sk-..." }
+Output: { "service": "openai", "key_name": "api_key", "status": "available" }
 ```
 
 ### `list_services`
@@ -86,7 +82,7 @@ Discover all service/key-name pairs registered in Vault,
 including whether each key can be verified upstream.
 
 ### `list_secrets`
-Enumerate retrievable paths in `service/key_name` form —
+Enumerate approved paths in `service/key_name` form —
 useful for pipeline planning before a job starts.
 
 ### `healthcheck`
@@ -97,8 +93,8 @@ Output: { "total": 34, "valid": 28, "exists_only": 4, "invalid": 1, "errors": 1 
 ```
 
 ### `rotate_secret`
-Read-only. Returns the safe Vault-side rotation path —
-it does not perform writes. Rotation is done out-of-band by a human or privileged agent.
+Read-only. Directs the operator to the Fly-authenticated, one-time localhost intake form.
+No value is accepted in a command argument.
 
 ---
 
@@ -106,14 +102,14 @@ it does not perform writes. Rotation is done out-of-band by a human or privilege
 
 ```
 AI Agent
-  ──(MCP: get_secret)──►  Keymaster MCP Server
+  ──(MCP: status only)──►  Keymaster MCP Server
                               ──(HTTPS + Bearer)──►  Keymaster HTTP Proxy
                                                          ──(AppRole)──►  HashiCorp Vault KV v2
 ```
 
-- **No secret caching.** Each `get_secret` call hits Vault fresh.
-- **No secret logging.** The MCP server never writes credential values to stdout.
-- **Write-blocked by design.** The Keymaster proxy exposes read-only Vault paths.
+- **No secret disclosure.** MCP tool responses contain status and metadata only.
+- **No secret caching or logging.** Credential values are used only inside a health check and are never returned or written to stdout.
+- **Agent writes blocked by design.** MCP tools stay read-only; human intake uses a localhost form over a Fly-authenticated private tunnel.
 - **Token-scoped.** Each agent gets a Bearer token that cannot exceed its read-only scope.
 - **TLS throughout.** Agent → Keymaster MCP → Keymaster proxy → Vault: all encrypted.
 
@@ -133,11 +129,12 @@ Shopify · YouTube · IBM Quantum · and more.
 
 | CLI argument | Environment variable | Required | Description |
 |---|---|---|---|
-| `--vault-url <url>` | `USER_KEYMASTER_URL` | Yes | Keymaster proxy URL |
-| `--token <token>` | `USER_KEYMASTER_TOKEN` | Yes | Bearer token for Keymaster |
+| `--vault-url <url>` | `USER_KEYMASTER_URL` | Yes | Read-only Keymaster proxy URL |
 | `--help` | | | Show help |
 
-CLI arguments override environment variables.
+`USER_KEYMASTER_TOKEN` is supplied by the existing MCP connector/runtime binding. `KEYMASTER_TOKEN` is reused by the local human-intake command. Neither credential is accepted on the command line. The intake command defaults to Fly app `akari-keymaster` private port `8001`; `--intake-url` accepts loopback addresses only.
+
+GitHub Actions publishing uses npm Trusted Publishing (OIDC) from `publish-npm.yml`; no npm token is copied into Actions.
 
 ---
 
@@ -160,7 +157,7 @@ This MCP server is the client-facing layer of the Keymaster infrastructure:
 ```
 
 You bring your own Vault + Keymaster deployment.
-The [AInoAKARI/keymaster](https://github.com/AInoAKARI/keymaster) repo
+The [AInoAKARI/AKARI-VAULT-KEYMASTER](https://github.com/AInoAKARI/AKARI-VAULT-KEYMASTER) repo
 contains the server-side Keymaster proxy.
 
 ---

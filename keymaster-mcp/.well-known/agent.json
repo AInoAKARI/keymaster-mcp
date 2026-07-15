@@ -2,7 +2,7 @@
   "name": "AKARI Keymaster",
   "description": "Legacy-compatible discovery document for clients that still request /.well-known/agent.json. The canonical latest card is /.well-known/agent-card.json.",
   "url": "https://ai-akari.ai/a2a/keymaster/jsonrpc",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "provider": {
     "organization": "AInoAKARI",
     "url": "https://ai-akari.ai"
@@ -30,9 +30,9 @@
   ],
   "skills": [
     {
-      "id": "get_secret",
-      "name": "Get Secret",
-      "description": "Fetch an approved secret for a given service and key name through the read-only Keymaster boundary."
+      "id": "secret_status",
+      "name": "Secret Status",
+      "description": "Check whether an approved credential is available without returning its value."
     },
     {
       "id": "list_services",
@@ -42,7 +42,7 @@
     {
       "id": "list_secrets",
       "name": "List Secrets",
-      "description": "Enumerate retrievable secret paths and show whether each one is API-verifiable."
+      "description": "Enumerate approved credential paths and show whether each one is API-verifiable."
     },
     {
       "id": "healthcheck",
@@ -52,7 +52,7 @@
     {
       "id": "rotate_secret",
       "name": "Rotate Secret Instructions",
-      "description": "Explain the safe Vault-side rotation path when a secret must be changed."
+      "description": "Direct rotation to the Fly-authenticated one-time localhost intake."
     }
   ],
   "protocolVersion": "0.2.1"
