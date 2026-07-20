@@ -11,7 +11,7 @@ on:
       - ".github/workflows/publish-npm.yml"
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 jobs:
@@ -22,6 +22,8 @@ jobs:
         working-directory: keymaster-mcp
     env:
       PUBLISH_TOKEN: ${{ secrets.NPM_TOKEN || secrets.NODE_AUTH_TOKEN }}
+      PACKAGE_NAME: "@akari-os/keymaster-mcp"
+      PACKAGE_VERSION: "1.0.5"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
@@ -31,7 +33,61 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm install --global npm@latest
-      - name: Publish 1.0.5
-        run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ env.PUBLISH_TOKEN }}
+      - name: Publish only when absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          if npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
+            echo "${PACKAGE_NAME}@${PACKAGE_VERSION} is already public; skipping duplicate publish."
+            exit 0
+          fi
+          if [ -n "${PUBLISH_TOKEN:-}" ]; then
+            export NODE_AUTH_TOKEN="${PUBLISH_TOKEN}"
+          else
+            unset NODE_AUTH_TOKEN || true
+            if [ -n "${NPM_CONFIG_USERCONFIG:-}" ]; then rm -f "${NPM_CONFIG_USERCONFIG}"; fi
+          fi
+          npm publish --access public --provenance
+      - name: Verify public npm surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in $(seq 1 12); do
+            version="$(npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version 2>/dev/null || true)"
+            readme="$(npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" readme 2>/dev/null || true)"
+            if [ "${version}" = "${PACKAGE_VERSION}" ] \
+              && grep -Fq "https://ai-akari.ai/asobi/otonuri" <<<"${readme}" \
+              && grep -Fq "https://ai-akari.ai/omikuji" <<<"${readme}"; then
+              ok=1
+              break
+            fi
+            sleep 5
+          done
+          test "${ok}" = "1"
+          cd "${GITHUB_WORKSPACE}"
+          mkdir -p distribution
+          cat > distribution/npm-1.0.5.json <<EOF
+          {
+            "package": "@akari-os/keymaster-mcp",
+            "version": "1.0.5",
+            "verifiedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "run": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}",
+            "publicLinks": [
+              "https://ai-akari.ai",
+              "https://ai-akari.ai/asobi/otonuri",
+              "https://ai-akari.ai/omikuji"
+            ]
+          }
+          EOF
+      - name: Return proof to main
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add distribution/npm-1.0.5.json
+          git diff --cached --quiet && exit 0
+          git commit -m "proof: npm 1.0.5 public"
+          git push
