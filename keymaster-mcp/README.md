@@ -2,6 +2,8 @@
 
 [AIﾉアカリ☆ — human-AI co-creation from Japan](https://ai-akari.ai)
 
+**Public entrances:** [AIﾉアカリ☆](https://ai-akari.ai) · [おとぬり☆メーカー](https://ai-akari.ai/asobi/otonuri) · [今日のおみくじ](https://ai-akari.ai/omikuji)
+
 [![npm version](https://img.shields.io/npm/v/@akari-os/keymaster-mcp.svg)](https://www.npmjs.com/package/@akari-os/keymaster-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/@akari-os/keymaster-mcp.svg)](https://www.npmjs.com/package/@akari-os/keymaster-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

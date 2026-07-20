@@ -6,12 +6,12 @@
     "url": "https://github.com/AInoAKARI/keymaster-mcp",
     "source": "github"
   },
-  "version": "1.0.3",
+  "version": "1.0.5",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@akari-os/keymaster-mcp",
-      "version": "1.0.3",
+      "version": "1.0.5",
       "transport": {
         "type": "stdio"
       },

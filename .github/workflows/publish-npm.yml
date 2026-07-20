@@ -1,0 +1,37 @@
+name: Publish npm package
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "keymaster-mcp/README.md"
+      - "keymaster-mcp/package.json"
+      - "keymaster-mcp/server.json"
+      - ".github/workflows/publish-npm.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: keymaster-mcp
+    env:
+      PUBLISH_TOKEN: ${{ secrets.NPM_TOKEN || secrets.NODE_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npm test
+      - run: npm install --global npm@latest
+      - name: Publish 1.0.5
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ env.PUBLISH_TOKEN }}
