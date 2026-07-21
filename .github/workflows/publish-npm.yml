@@ -14,9 +14,14 @@ permissions:
   contents: write
   id-token: write
 
+concurrency:
+  group: npm-publish-${{ github.repository }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: keymaster-mcp
@@ -34,11 +39,14 @@ jobs:
       - run: npm test
       - run: npm install --global npm@latest
       - name: Publish only when absent
+        id: publish
         shell: bash
         run: |
           set -euo pipefail
           if npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
             echo "${PACKAGE_NAME}@${PACKAGE_VERSION} is already public; skipping duplicate publish."
+            echo "result=already_public" >> "${GITHUB_OUTPUT}"
+            echo "blocker=none" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
           if [ -n "${PUBLISH_TOKEN:-}" ]; then
@@ -47,8 +55,62 @@ jobs:
             unset NODE_AUTH_TOKEN || true
             if [ -n "${NPM_CONFIG_USERCONFIG:-}" ]; then rm -f "${NPM_CONFIG_USERCONFIG}"; fi
           fi
-          npm publish --access public --provenance
+
+          set +e
+          output="$(npm publish --access public --provenance 2>&1)"
+          status=$?
+          set -e
+
+          if [ "${status}" -eq 0 ]; then
+            echo "result=published" >> "${GITHUB_OUTPUT}"
+            echo "blocker=none" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          normalized="$(printf '%s' "${output}" | tr '[:upper:]' '[:lower:]')"
+          blocker="unknown_publish_failure"
+          if grep -Eq 'eneedauth|e401|authentication required|need auth' <<<"${normalized}"; then
+            blocker="auth_missing_or_invalid"
+          elif grep -Eq 'e403|forbidden|trusted publisher|permission' <<<"${normalized}"; then
+            blocker="trusted_publisher_or_scope_forbidden"
+          elif grep -Eq 'eotp|one-time password|otp' <<<"${normalized}"; then
+            blocker="otp_required"
+          elif grep -Eq 'previously published|cannot publish over|version.*exists' <<<"${normalized}"; then
+            blocker="version_conflict"
+          elif grep -Eq 'provenance|oidc|id-token' <<<"${normalized}"; then
+            blocker="provenance_or_oidc_configuration"
+          fi
+          echo "result=failed" >> "${GITHUB_OUTPUT}"
+          echo "blocker=${blocker}" >> "${GITHUB_OUTPUT}"
+          echo "npm publish failed; classified blocker=${blocker}; raw output intentionally not persisted."
+          exit "${status}"
+      - name: Return classified blocker to main
+        if: ${{ failure() && steps.publish.outputs.result == 'failed' }}
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          latest="$(npm view "${PACKAGE_NAME}" version 2>/dev/null || true)"
+          mkdir -p distribution
+          cat > distribution/npm-1.0.5-blocker.json <<EOF
+          {
+            "package": "${PACKAGE_NAME}",
+            "targetVersion": "${PACKAGE_VERSION}",
+            "registryLatest": "${latest}",
+            "blocker": "${{ steps.publish.outputs.blocker }}",
+            "checkedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "run": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}",
+            "rawErrorPersisted": false
+          }
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add distribution/npm-1.0.5-blocker.json
+          git diff --cached --quiet && exit 0
+          git commit -m "proof: classify npm 1.0.5 publish blocker"
+          git push origin HEAD:main
       - name: Verify public npm surface
+        if: ${{ success() }}
         shell: bash
         run: |
           set -euo pipefail
@@ -67,6 +129,7 @@ jobs:
           test "${ok}" = "1"
           cd "${GITHUB_WORKSPACE}"
           mkdir -p distribution
+          rm -f distribution/npm-1.0.5-blocker.json
           cat > distribution/npm-1.0.5.json <<EOF
           {
             "package": "@akari-os/keymaster-mcp",
@@ -80,14 +143,15 @@ jobs:
             ]
           }
           EOF
-      - name: Return proof to main
+      - name: Return success proof to main
+        if: ${{ success() }}
         working-directory: .
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add distribution/npm-1.0.5.json
+          git add -A distribution
           git diff --cached --quiet && exit 0
           git commit -m "proof: npm 1.0.5 public"
-          git push
+          git push origin HEAD:main
