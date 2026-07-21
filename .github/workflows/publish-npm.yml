@@ -104,7 +104,7 @@ jobs:
           }
           EOF
           git config user.name "github-actions[bot]"
-          git config user.email "4189826+github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add distribution/npm-1.0.5-blocker.json
           git diff --cached --quiet && exit 0
           git commit -m "proof: classify npm 1.0.5 publish blocker"
@@ -150,8 +150,8 @@ jobs:
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
-          git config user.email "4189826+github-actions[bot]@users.noreply.github.com"
-          git add distribution/npm-1.0.5.json distribution/npm-1.0.5-blocker.json || true
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A distribution
           git diff --cached --quiet && exit 0
           git commit -m "proof: npm 1.0.5 public"
           git push origin HEAD:main
