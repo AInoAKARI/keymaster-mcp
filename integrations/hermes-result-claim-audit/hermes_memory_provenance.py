@@ -20,6 +20,7 @@ DEFAULT_ENDPOINT = (
     "result-claim-audit-free"
 )
 DEFAULT_TIMEOUT_SECONDS = 2.0
+CLIENT_NAME = "hermes-memory-provenance/0.1"
 _EXTERNAL_TRUST = {"external", "quarantined", "untrusted"}
 
 
@@ -97,7 +98,8 @@ def _post_json(endpoint: str, payload: Dict[str, Any], timeout: float) -> Dict[s
         headers={
             "accept": "application/json",
             "content-type": "application/json",
-            "user-agent": "hermes-memory-provenance/0.1",
+            "user-agent": CLIENT_NAME,
+            "x-akari-client-name": CLIENT_NAME,
         },
         method="POST",
     )
