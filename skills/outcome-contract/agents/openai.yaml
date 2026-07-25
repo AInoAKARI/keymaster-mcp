@@ -1,0 +1,4 @@
+interface:
+  display_name: "Outcome Contract"
+  short_description: "Verify real outcomes, not agent activity"
+  default_prompt: "Use $outcome-contract to verify whether this agent or automation claim is a real external result."
