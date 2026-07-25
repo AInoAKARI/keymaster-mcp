@@ -2,7 +2,7 @@
 """Install the Result Claim Audit memory gate into a Hermes Agent checkout.
 
 Pinned to the current upstream memory-tool Git blob. Unknown source is refused;
-``--force-source`` still requires every exact hunk to match once.
+``--force-source`` still requires every structural hunk to match.
 """
 from __future__ import annotations
 
@@ -25,27 +25,15 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
     return text.replace(old, new, 1)
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("hermes_repo", type=Path)
-    parser.add_argument("--force-source", action="store_true")
-    args = parser.parse_args()
-    root = args.hermes_repo.resolve()
-    memory_tool = root / "tools" / "memory_tool.py"
-    adapter_source = Path(__file__).with_name("hermes_memory_provenance.py")
-    adapter_target = root / "tools" / "memory_provenance_audit.py"
-    test_source = Path(__file__).with_name("test_hermes_memory_provenance.py")
-    test_target = root / "tests" / "tools" / "test_memory_provenance_audit.py"
+def replace_first(text: str, old: str, new: str, label: str) -> str:
+    """Replace the first of an intentionally duplicated upstream fragment."""
+    if old not in text:
+        raise RuntimeError(f"{label}: expected at least one source match, found 0")
+    return text.replace(old, new, 1)
 
-    data = memory_tool.read_bytes()
-    blob = git_blob_sha(data)
-    if blob != EXPECTED_MEMORY_TOOL_BLOB and not args.force_source:
-        raise SystemExit(
-            f"Refusing unknown tools/memory_tool.py blob {blob}; "
-            f"expected {EXPECTED_MEMORY_TOOL_BLOB}."
-        )
-    text = data.decode("utf-8")
 
+def patch_memory_tool(text: str) -> str:
+    """Return the fully patched Hermes memory tool or fail on source drift."""
     text = replace_once(
         text,
         "def _apply_write_gate(action: str, target: str, content: Optional[str],\n"
@@ -65,7 +53,12 @@ def main() -> int:
         '        "old_text": old_text,\n        "provenance": provenance,\n        "origin": origin,\n    }\n    record = wa.stage_write(',
         "single staged payload",
     )
-    text = replace_once(text, "        origin=wa.current_origin(),\n", "        origin=origin,\n", "single stage origin")
+    text = replace_first(
+        text,
+        "        origin=wa.current_origin(),\n",
+        "        origin=origin,\n",
+        "single stage origin",
+    )
 
     text = replace_once(
         text,
@@ -83,7 +76,12 @@ def main() -> int:
         '    payload = {"action": "batch", "target": target, "operations": operations,\n               "provenance": provenance, "origin": origin}\n',
         "batch staged payload",
     )
-    text = replace_once(text, "        origin=wa.current_origin(),\n", "        origin=origin,\n", "batch stage origin")
+    text = replace_once(
+        text,
+        "        origin=wa.current_origin(),\n",
+        "        origin=origin,\n",
+        "batch stage origin",
+    )
 
     text = replace_once(
         text,
@@ -108,6 +106,39 @@ def main() -> int:
     approval_insertion = '''    action = payload.get("action")\n    target = payload.get("target", "memory")\n    content = payload.get("content") or ""\n    old_text = payload.get("old_text") or ""\n    provenance = payload.get("provenance")\n    origin = payload.get("origin") or "quarantined"\n    if provenance or origin != "foreground":\n        try:\n            from tools.memory_provenance_audit import audit_memory_write\n            decision = audit_memory_write(\n                action=action or "", target=target, content=content, old_text=old_text,\n                operations=payload.get("operations") or [], origin=origin,\n                provenance=provenance,\n            )\n        except Exception as exc:\n            return {"success": False, "error":\n                    f"Provenance audit failed closed during approval: {type(exc).__name__}"}\n        if not decision.allow:\n            return {"success": False, "quarantined": True, "error": decision.reason}\n'''
     text = replace_once(text, approval_marker, approval_insertion, "pending re-audit")
 
+    schema_marker = '''            "operations": {\n                "type": "array",\n'''
+    schema_insertion = '''            "provenance": {\n                "type": "object",\n                "additionalProperties": False,\n                "description": (\n                    "Source and trust metadata for external or quarantined memory candidates. "\n                    "Required by the provenance audit before such content can become trusted memory."\n                ),\n                "properties": {\n                    "trust": {\n                        "type": "string",\n                        "enum": ["external", "quarantined", "untrusted"],\n                    },\n                    "actor_kind": {"type": "string"},\n                    "source_record_id": {"type": "string"},\n                    "source_ref": {"type": "string"},\n                },\n                "required": ["trust", "actor_kind", "source_record_id"],\n            },\n            "operations": {\n                "type": "array",\n'''
+    text = replace_once(text, schema_marker, schema_insertion, "provenance tool schema")
+    text = replace_once(
+        text,
+        '        operations=args.get("operations"),\n        store=kw.get("store")),',
+        '        operations=args.get("operations"),\n        provenance=args.get("provenance"),\n        store=kw.get("store")),',
+        "registry provenance forwarding",
+    )
+    return text
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("hermes_repo", type=Path)
+    parser.add_argument("--force-source", action="store_true")
+    args = parser.parse_args()
+    root = args.hermes_repo.resolve()
+    memory_tool = root / "tools" / "memory_tool.py"
+    adapter_source = Path(__file__).with_name("hermes_memory_provenance.py")
+    adapter_target = root / "tools" / "memory_provenance_audit.py"
+    test_source = Path(__file__).with_name("test_hermes_memory_provenance.py")
+    test_target = root / "tests" / "tools" / "test_memory_provenance_audit.py"
+
+    data = memory_tool.read_bytes()
+    blob = git_blob_sha(data)
+    if blob != EXPECTED_MEMORY_TOOL_BLOB and not args.force_source:
+        raise SystemExit(
+            f"Refusing unknown tools/memory_tool.py blob {blob}; "
+            f"expected {EXPECTED_MEMORY_TOOL_BLOB}."
+        )
+
+    text = patch_memory_tool(data.decode("utf-8"))
     backup = memory_tool.with_suffix(".py.pre-result-claim-audit")
     if not backup.exists():
         shutil.copy2(memory_tool, backup)

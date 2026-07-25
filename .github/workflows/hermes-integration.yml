@@ -1,0 +1,50 @@
+name: Hermes Result Claim Audit integration
+
+on:
+  pull_request:
+    paths:
+      - "integrations/hermes-result-claim-audit/**"
+      - ".github/workflows/hermes-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clone pinned-compatible Hermes main
+        run: git clone --depth 1 https://github.com/NousResearch/hermes-agent.git /tmp/hermes-agent
+      - name: Verify upstream source blob
+        run: |
+          actual=$(git -C /tmp/hermes-agent hash-object tools/memory_tool.py)
+          test "$actual" = "463b6b5149c70770a500fc7d0ab22f41daddd0ba"
+      - name: Install audit gate into Hermes checkout
+        working-directory: integrations/hermes-result-claim-audit
+        run: python install_into_hermes.py /tmp/hermes-agent
+      - name: Compile patched integration
+        run: |
+          python -m py_compile \
+            /tmp/hermes-agent/tools/memory_tool.py \
+            /tmp/hermes-agent/tools/memory_provenance_audit.py
+      - name: Run installer wiring tests
+        working-directory: integrations/hermes-result-claim-audit
+        run: python -m pytest -q test_install_into_hermes.py
+      - name: Run adapter tests from Hermes path
+        run: |
+          python -m pip install -q pytest
+          cd /tmp/hermes-agent
+          PYTHONPATH=/tmp/hermes-agent/tools python -m pytest -q tests/tools/test_memory_provenance_audit.py
+      - name: Assert normal tool schema exposes provenance
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0, "/tmp/hermes-agent")
+          from tools.memory_tool import MEMORY_SCHEMA
+          provenance = MEMORY_SCHEMA["parameters"]["properties"]["provenance"]
+          assert provenance["required"] == ["trust", "actor_kind", "source_record_id"]
+          print("provenance schema reachable through normal Hermes tool registration")
+          PY
