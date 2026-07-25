@@ -14,6 +14,7 @@ It places a fail-closed audit before external, quarantined, or autonomous-origin
 - Stores decision, reason, origin, source, proposed-write SHA-256, audit hashes, result, and time in `<HERMES_HOME>/provenance/memory.jsonl`.
 - Re-audits quarantined candidates when pending approval is applied.
 - Leaves direct foreground operator writes unchanged unless explicitly marked external or quarantined.
+- Sends the fixed client name `hermes-memory-provenance/0.1`; the free endpoint records only client name, metric, verdict, and whether the claim passed. Claim text and evidence are not stored in that external execution event.
 
 ## Install
 
@@ -79,6 +80,8 @@ Covered paths: complete provenance, missing provenance, API unavailable, non-res
 ## Boundary
 
 The audit validates the supplied evidence contract and hashes. It does not independently authenticate the issuer named by `source_record_id`. A future native Hermes provenance model can replace caller-supplied fields without removing the fail-closed promotion boundary.
+
+External execution telemetry is deliberately minimal and is not a proof of adoption by itself. A call is counted as third-party use only after its client and external context are independently attributable; internal probes carry `X-Akari-Internal-Test: 1` and are excluded.
 
 ## Rollback
 
