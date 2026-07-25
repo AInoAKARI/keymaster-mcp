@@ -2,7 +2,7 @@
 """Install the Result Claim Audit memory gate into a Hermes Agent checkout.
 
 Pinned to the current upstream memory-tool Git blob. Unknown source is refused;
-``--force-source`` still requires every exact hunk to match once.
+``--force-source`` still requires every structural hunk to match.
 """
 from __future__ import annotations
 
@@ -22,6 +22,13 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
     count = text.count(old)
     if count != 1:
         raise RuntimeError(f"{label}: expected one source match, found {count}")
+    return text.replace(old, new, 1)
+
+
+def replace_first(text: str, old: str, new: str, label: str) -> str:
+    """Replace the first of an intentionally duplicated upstream fragment."""
+    if old not in text:
+        raise RuntimeError(f"{label}: expected at least one source match, found 0")
     return text.replace(old, new, 1)
 
 
@@ -46,7 +53,12 @@ def patch_memory_tool(text: str) -> str:
         '        "old_text": old_text,\n        "provenance": provenance,\n        "origin": origin,\n    }\n    record = wa.stage_write(',
         "single staged payload",
     )
-    text = replace_once(text, "        origin=wa.current_origin(),\n", "        origin=origin,\n", "single stage origin")
+    text = replace_first(
+        text,
+        "        origin=wa.current_origin(),\n",
+        "        origin=origin,\n",
+        "single stage origin",
+    )
 
     text = replace_once(
         text,
@@ -64,7 +76,12 @@ def patch_memory_tool(text: str) -> str:
         '    payload = {"action": "batch", "target": target, "operations": operations,\n               "provenance": provenance, "origin": origin}\n',
         "batch staged payload",
     )
-    text = replace_once(text, "        origin=wa.current_origin(),\n", "        origin=origin,\n", "batch stage origin")
+    text = replace_once(
+        text,
+        "        origin=wa.current_origin(),\n",
+        "        origin=origin,\n",
+        "batch stage origin",
+    )
 
     text = replace_once(
         text,
