@@ -77,6 +77,12 @@ Failure: Hermes returns `success=true`, `staged=true`, `quarantined=true`; the e
 
 Covered paths: complete provenance, missing provenance, API unavailable, non-result verdict, and unchanged foreground writes.
 
+## External telemetry database requirement
+
+`ai-akari-result-auditor` writes minimal usage events to `akari_agent_events` with `device_id=external-mcp:<client>`. That ledger has a foreign key to `akari_agent_devices`. Without a matching telemetry-only device row, PostgREST rejects the event even though the audit response itself succeeds.
+
+Apply `supabase_external_telemetry_fk.sql` once to create the parent record automatically before each external MCP event. The migration keeps RLS and the foreign key intact, stores no claim/evidence text, and does not turn a call into proof of adoption. The production database was verified with a rolled-back service-role insertion after the trigger was installed.
+
 ## Boundary
 
 The audit validates the supplied evidence contract and hashes. It does not independently authenticate the issuer named by `source_record_id`. A future native Hermes provenance model can replace caller-supplied fields without removing the fail-closed promotion boundary.
@@ -86,3 +92,10 @@ External execution telemetry is deliberately minimal and is not a proof of adopt
 ## Rollback
 
 Restore `tools/memory_tool.py.pre-result-claim-audit`, remove `tools/memory_provenance_audit.py`, and remove the added test file.
+
+For telemetry rollback:
+
+```sql
+drop trigger if exists trg_ensure_external_mcp_agent_device on public.akari_agent_events;
+drop function if exists public.ensure_external_mcp_agent_device();
+```
