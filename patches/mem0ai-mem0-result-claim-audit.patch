@@ -1,0 +1,51 @@
+diff --git a/docs/integrations/result-claim-audit.mdx b/docs/integrations/result-claim-audit.mdx
+new file mode 100644
+index 0000000..3a6f9c1
+--- /dev/null
++++ b/docs/integrations/result-claim-audit.mdx
+@@ -0,0 +1,42 @@
++---
++title: "Result Claim Audit provenance gate"
++description: "Fail closed before external or quarantined content reaches Memory.add."
++---
++
++Mem0's OSS `Memory.add` accepts `metadata` and calls `_add_to_vector_store`
++after metadata normalization. The Result Claim Audit adapter wraps that exact
++boundary without changing Mem0's schema.
++
++```python
++from mem0 import Memory
++from mem0_result_claim_audit import ResultClaimAuditedMemory
++
++memory = ResultClaimAuditedMemory(Memory())
++memory.add(
++    "Fact extracted from an external document.",
++    user_id="user-123",
++    provenance={
++        "trust": "quarantined",
++        "origin": "retrieval",
++        "actor_kind": "rag_document",
++        "source_record_id": "document-42",
++        "source_ref": "https://example.com/document-42",
++    },
++)
++```
++
++The gate requires actor and record provenance, calls a bounded external audit,
++and stores the accepted receipt inside Mem0's normal metadata. Timeout, network
++failure, malformed output, missing provenance, and a non-result verdict all
++fail before the wrapped `Memory.add` is called.
++
++Runnable code and isolated tests:
++
++https://github.com/AInoAKARI/keymaster-mcp/tree/main/integrations/mem0-result-claim-audit
++
++Apply this documentation patch:
++
++```bash
++curl -L https://raw.githubusercontent.com/AInoAKARI/keymaster-mcp/main/patches/mem0ai-mem0-result-claim-audit.patch | git apply
++```
++
++The adapter test suite runs without a network call or Mem0 installation and
++covers accepted promotion, missing provenance, rejected verdict, audit outage,
++and foreground compatibility.
