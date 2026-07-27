@@ -1,0 +1,52 @@
+diff --git a/examples/result_claim_audit/README.md b/examples/result_claim_audit/README.md
+new file mode 100644
+index 0000000..85792d1
+--- /dev/null
++++ b/examples/result_claim_audit/README.md
+@@ -0,0 +1,44 @@
++# Result Claim Audit before Letta passage persistence
++
++This example targets Letta's current `PassageManager` write methods:
++
++- `create_agent_passage_async`
++- `create_source_passage_async`
++
++The wrapper runs before `ArchivalPassage.create_async` or
++`SourcePassage.create_async`. Accepted receipts are stored in the existing
++`Passage.metadata_` mapping that PassageManager already copies into its ORM
++objects, so no migration is required.
++
++```python
++from letta.services.passage_manager import PassageManager
++from letta_result_claim_audit import ResultClaimAuditedPassageManager
++
++passages = ResultClaimAuditedPassageManager(PassageManager())
++created = await passages.create_agent_passage_async(
++    passage,
++    actor,
++    provenance={
++        "trust": "quarantined",
++        "origin": "retrieval",
++        "actor_kind": "rag_document",
++        "source_record_id": "doc-42",
++        "source_ref": "s3://bucket/doc-42",
++    },
++)
++```
++
++The integration fails closed on missing provenance, audit outage, malformed
++output, or non-result verdict before the wrapped manager receives the passage.
++
++Runnable adapter and isolated tests:
++
++https://github.com/AInoAKARI/keymaster-mcp/tree/main/integrations/letta-result-claim-audit
++
++Apply this patch:
++
++```bash
++curl -L https://raw.githubusercontent.com/AInoAKARI/keymaster-mcp/main/patches/letta-ai-letta-result-claim-audit.patch | git apply
++```
++
++Verification: `python -m unittest -v test_letta_result_claim_audit.py` — three
++tests cover accepted receipt persistence, missing provenance, and rejected
++verdict without installing Letta or calling the network.
