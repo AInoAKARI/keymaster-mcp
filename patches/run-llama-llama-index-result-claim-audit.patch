@@ -1,0 +1,52 @@
+diff --git a/docs/src/content/docs/framework/module_guides/deploying/result_claim_audit_memory.md b/docs/src/content/docs/framework/module_guides/deploying/result_claim_audit_memory.md
+new file mode 100644
+index 0000000..7174da0
+--- /dev/null
++++ b/docs/src/content/docs/framework/module_guides/deploying/result_claim_audit_memory.md
+@@ -0,0 +1,43 @@
++# Gate external content before LlamaIndex memory persistence
++
++The Result Claim Audit wrapper targets the current `VectorMemory.put` and
++`VectorMemory.set` boundary. It runs before `_commit_node()` reaches
++`vector_index.insert_nodes()`.
++
++```python
++from llama_index.core.memory.vector_memory import VectorMemory
++from llamaindex_result_claim_audit import ResultClaimAuditedMemory
++
++memory = ResultClaimAuditedMemory(VectorMemory.from_defaults())
++memory.put(
++    message,
++    provenance={
++        "trust": "quarantined",
++        "origin": "rag",
++        "actor_kind": "retriever",
++        "source_record_id": "node-7",
++        "source_ref": "https://example.test/node-7",
++    },
++)
++```
++
++Accepted receipts are stored in the native `ChatMessage.additional_kwargs`
++mapping. Missing provenance, audit outage, malformed output, and non-result
++verdicts fail before the wrapped memory receives the message.
++
++Runnable adapter and isolated tests:
++
++https://github.com/AInoAKARI/keymaster-mcp/tree/main/integrations/llamaindex-result-claim-audit
++
++Apply this patch:
++
++```bash
++curl -L https://raw.githubusercontent.com/AInoAKARI/keymaster-mcp/main/patches/run-llama-llama-index-result-claim-audit.patch | git apply
++```
++
++Verification:
++
++```bash
++python -m unittest -v test_llamaindex_result_claim_audit.py
++```
++
++The three isolated tests cover accepted receipt attachment, fail-closed
++rejection, and unchanged foreground writes without installing LlamaIndex or
++calling the network.
