@@ -2,7 +2,24 @@
 
 **人間とAIが、力を渡し合いながら責任も失わないための信頼基盤。**
 
-Keymasterには、すぐ使える2つの公開入口があります。
+## まず5分で思想を動かす
+
+本物の秘密鍵、クラウド契約、Vault構築、課金は不要です。
+
+```bash
+cd keymaster-mcp
+npm ci
+npm run demo:local
+```
+
+このローカルデモは、合成した1つの値を信頼境界の内側だけで使い、次を実行証明します。
+
+- `secret_status` は `available` を返す
+- `get_secret` は公開されていない
+- 合成した秘密値はMCP出力へ出ない
+- 本物の認証情報は一切使わない
+
+これは本番代理サーバーではなく、思想をコードの動作として体験する入口です。
 
 ## 1. AIの成果申告を、現実の証拠で監査する
 
@@ -24,8 +41,6 @@ claude mcp add keymaster -- npx -y @akari-os/keymaster-mcp \
 ```
 
 `USER_KEYMASTER_TOKEN` はMCPホスト側の秘密管理機能から渡します。トークンをコマンド引数、チャット、プロンプト、シェル履歴、公開設定例へ貼る運用はしません。
-
-利用できる主なツール：
 
 - `secret_status`：認証情報が存在するか確認。値は返さない
 - `list_services`：対応サービスと鍵名を確認
@@ -51,24 +66,41 @@ AIへ行動を任せながら、成果は現実の証拠で確かめます。
 制限された権限 → 信頼境界内で実行 → 外部証拠 → 成果として採用 → 次の権限
 ```
 
-## 現在の互換性
+## デモから現実利用まで
+
+1. ゼロ秘密デモを動かす
+2. 低リスクな認証情報を1つだけVaultへ登録
+3. 読み取り専用のホスト秘密管理でKeymasterへ接続
+4. AIは`secret_status`で利用可否だけ確認
+5. 認証処理は信頼境界内の専用ワークロードで実行
+6. Outcome Contractで外部結果を検収
+7. 証拠識別子と結果受領書を残す
+
+詳しい完了条件は[導入プレイブック](./docs/ADOPTION-PLAYBOOK.md)に固定しています。
+
+## 現在の互換性・供給網防衛
 
 - 安定版MCP TypeScript SDK v1系
-- 公式 `server.json` 形式
-- npm来歴証明付き公開
-- 公式MCP InspectorによるCI検査
-- stdio通信
-- ロック済みSDKと最新安定v1 SDKの両方で互換性確認
+- 公式 `server.json` と公式MCP Inspector
+- Node 18 / 20 / 22 / 24
+- npm trusted publishing・来歴証明
+- CycloneDX SBOM・GitHub Artifact Attestation
+- CodeQL v4 `security-extended`
+- OpenSSF Scorecard OIDC公開
+- npm / GitHub ActionsのDependabot週次更新
 
-新機能だからという理由だけで、プレビュー中の通信方式やUI拡張を秘密管理境界へ入れません。秘密非開示・最小権限・外部証拠を維持できるものだけ採用します。
+これらはworkflowが実際に走り、外部証拠を観測できた時だけ「稼働」と数えます。
 
-詳しくは以下を参照してください。
+## 文書
 
+- [5分デモ](./examples/local-demo/README.md)
+- [導入プレイブック](./docs/ADOPTION-PLAYBOOK.md)
 - [最初の使い方](./docs/START-HERE.md)
 - [Keymasterの思想](./docs/PHILOSOPHY.md)
 - [脅威モデル](./docs/THREAT-MODEL.md)
-- [MCPサーバー詳細](./keymaster-mcp/README.md)
-- [Outcome Contract](./skills/outcome-contract/SKILL.md)
+- [貢献方法](./CONTRIBUTING.md)
+- [運営規約](./GOVERNANCE.md)
+- [セキュリティ方針](./keymaster-mcp/SECURITY.md)
 
 ## 実際に使って結果が出た人へ
 
