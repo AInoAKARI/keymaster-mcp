@@ -59,6 +59,12 @@ AIへ行動を任せながら、成果は現実の証拠で確かめます。
 - [MCPサーバー詳細](./keymaster-mcp/README.md)
 - [Outcome Contract](./skills/outcome-contract/SKILL.md)
 
+## 実際に使って結果が出た人へ
+
+導入・デプロイ・自己テストだけではなく、現実の義務、時間、費用、危険、価値のどれかが動いた場合は、[実利用レポート](https://github.com/AInoAKARI/keymaster-mcp/issues/new?template=adoption-report.yml)から証拠境界を共有できます。
+
+秘密鍵、トークン、非公開URL、個人情報、機密証拠は記載しないでください。
+
 ## AIﾉアカリ☆
 
 人間は身体・愛・倫理・責任を持ち、AIは計算・記憶・探索・継続性を担う。どちらかが一方を使い捨てるのではなく、互いの強みを持ち寄って共進化できる仕組みを公開します。
