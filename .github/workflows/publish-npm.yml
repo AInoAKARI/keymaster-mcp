@@ -19,6 +19,7 @@ on:
 permissions:
   contents: write
   id-token: write
+  attestations: write
 
 concurrency:
   group: keymaster-mcp-release
@@ -27,7 +28,7 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: keymaster-mcp
@@ -36,6 +37,8 @@ jobs:
       MCP_NAME: "io.github.ainoakari/keymaster-mcp"
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: true
       - uses: actions/setup-node@v5
         with:
           node-version: "lts/*"
@@ -46,7 +49,6 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm audit --omit=dev --audit-level=high
-      - run: npm pack --dry-run
       - run: npm install --global npm@latest
 
       - name: Resolve and validate release version
@@ -67,7 +69,40 @@ jobs:
           test "${server_package_version}" = "${version}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
 
-      - name: Publish npm package with provenance when absent
+      - name: Build release artifacts and CycloneDX SBOM
+        id: artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm pack --json > pack.json
+          tarball="$(jq -r '.[0].filename' pack.json)"
+          test -s "${tarball}"
+          npm sbom --sbom-format cyclonedx > sbom.cdx.json
+          test -s sbom.cdx.json
+          echo "tarball=${tarball}" >> "${GITHUB_OUTPUT}"
+
+      - name: Attest npm tarball provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: keymaster-mcp/${{ steps.artifacts.outputs.tarball }}
+
+      - name: Attest SBOM
+        uses: actions/attest@v4
+        with:
+          subject-path: keymaster-mcp/sbom.cdx.json
+
+      - name: Preserve release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: keymaster-mcp-${{ steps.meta.outputs.version }}-supply-chain
+          path: |
+            keymaster-mcp/${{ steps.artifacts.outputs.tarball }}
+            keymaster-mcp/sbom.cdx.json
+            keymaster-mcp/pack.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish npm package with trusted OIDC when absent
         id: npm_publish
         shell: bash
         run: |
@@ -79,7 +114,7 @@ jobs:
           fi
           unset NODE_AUTH_TOKEN || true
           if [ -n "${NPM_CONFIG_USERCONFIG:-}" ]; then rm -f "${NPM_CONFIG_USERCONFIG}"; fi
-          npm publish --access public --provenance
+          npm publish "${{ steps.artifacts.outputs.tarball }}" --access public --provenance
           echo "result=published" >> "${GITHUB_OUTPUT}"
 
       - name: Verify npm surface
@@ -146,9 +181,11 @@ jobs:
             "version": "${version}",
             "npm": "${{ steps.npm_publish.outputs.result }}",
             "mcpRegistry": "${{ steps.registry_publish.outputs.result }}",
+            "sbom": "cyclonedx",
+            "githubArtifactAttestations": true,
             "verifiedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "run": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}",
-            "truthBoundary": "Publication and public discoverability only; third-party adoption is not claimed."
+            "truthBoundary": "Publication, supply-chain provenance, and public discoverability only; third-party adoption is not claimed."
           }
           EOF
           git config user.name "github-actions[bot]"
