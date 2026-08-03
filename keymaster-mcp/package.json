@@ -47,8 +47,8 @@
     "url": "https://github.com/AInoAKARI/keymaster-mcp/issues"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "zod": "^3.24.1"
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "typescript": "^5.4.0",
