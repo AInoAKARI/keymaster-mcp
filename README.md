@@ -2,13 +2,30 @@
 
 **Trust infrastructure for human–AI teams.**
 
-[日本語](./README.ja.md) · [Start here](./docs/START-HERE.md) · [Philosophy](./docs/PHILOSOPHY.md) · [Threat model](./docs/THREAT-MODEL.md)
+[日本語](./README.ja.md) · [Five-minute demo](./examples/local-demo/README.md) · [Adoption playbook](./docs/ADOPTION-PLAYBOOK.md) · [Philosophy](./docs/PHILOSOPHY.md) · [Threat model](./docs/THREAT-MODEL.md)
 
 Keymaster lets agents discover whether approved capabilities exist and whether their credentials are healthy **without returning production credentials to the model**. Its companion Outcome Contract accepts results only when external evidence—not the executor's own report—supports the claim.
 
 ```text
-bounded permission → action behind a trusted boundary → external evidence → accepted result → next permission
+bounded permission → trusted execution → external evidence → accepted result → next permission
 ```
+
+## Experience the philosophy without a credential
+
+```bash
+cd keymaster-mcp
+npm ci
+npm run demo:local
+```
+
+The loopback-only demo uses one synthetic value and proves that:
+
+- `secret_status` returns `available`;
+- `get_secret` is not exposed;
+- the synthetic credential never crosses model-visible MCP output;
+- no cloud account, Vault deployment, paid service, or real credential is required.
+
+The demo is an executable explanation, not a production proxy.
 
 ## Two public entry points
 
@@ -61,29 +78,45 @@ The agent is allowed to act, but its own completion message is not accepted as p
 
 The values are implemented in system behavior: non-disclosing MCP output, scoped read access, separated write paths, one source of truth, bounded network calls, evidence boundaries, and explicit next verification actions.
 
-## Start with one real workflow
+## From demo to real adoption
 
-1. register one low-risk credential in Vault;
-2. connect Keymaster with a read-only host secret binding;
-3. let the agent verify availability through `secret_status`;
-4. execute the authenticated action behind a trusted workload boundary;
-5. apply Outcome Contract at the acceptance boundary;
-6. preserve the evidence packet and result receipt.
+1. run the zero-secret demo;
+2. register one low-risk credential in Vault;
+3. connect Keymaster with a read-only host secret binding;
+4. let the agent verify availability through `secret_status`;
+5. execute the authenticated action behind a trusted workload boundary;
+6. apply Outcome Contract at the acceptance boundary;
+7. preserve the evidence packet and result receipt.
+
+See the [adoption playbook](./docs/ADOPTION-PLAYBOOK.md) for exact acceptance boundaries.
 
 Success is not the installation itself. Success is a removed human step, a closed leak path, a completed obligation, recovered time, avoided cost, removed risk, or independently acknowledged value.
 
 Used it in a real workflow? Submit a [real-world adoption report](https://github.com/AInoAKARI/keymaster-mcp/issues/new?template=adoption-report.yml) with redacted evidence markers and an explicit truth boundary. Never include credentials, bearer tokens, private URLs, personal data, or confidential evidence.
 
-## Current interoperability
+## Current interoperability and supply-chain controls
 
 - stable MCP TypeScript SDK v1 line;
-- official `server.json` registry metadata;
-- npm provenance publishing;
-- official MCP Inspector smoke test in CI;
-- stdio transport kept intentionally small for the credential boundary;
-- compatibility checks against the lockfile SDK and the newest supported stable v1 SDK.
+- official `server.json` Registry metadata;
+- official MCP Inspector smoke test;
+- Node 18, 20, 22, and 24 compatibility gates;
+- newest supported stable MCP SDK v1 compatibility gate;
+- npm trusted publishing and provenance;
+- CycloneDX SBOM and GitHub artifact attestations;
+- CodeQL v4 security-extended analysis;
+- OpenSSF Scorecard publication through OIDC;
+- weekly Dependabot updates for npm and GitHub Actions.
+
+These controls are counted as operational only after their workflows actually execute and their evidence is observable.
 
 Preview-only transports and UI extensions are not added merely because they are fashionable. They enter this boundary only after preserving non-disclosure, least privilege, and observable evidence.
+
+## Project participation
+
+- [Contributing](./CONTRIBUTING.md)
+- [Governance](./GOVERNANCE.md)
+- [Security policy](./keymaster-mcp/SECURITY.md)
+- [Changelog](./keymaster-mcp/CHANGELOG.md)
 
 ## AIﾉアカリ☆
 
