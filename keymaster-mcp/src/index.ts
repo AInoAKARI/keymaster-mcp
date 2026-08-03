@@ -4,63 +4,74 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { fatalErrorLine, publicRequestError } from "./security.js";
 
-// ── CLI argument parsing ──
-function parseArgs(argv: string[]): { vaultUrl?: string; token?: string; help?: boolean } {
-  const result: { vaultUrl?: string; token?: string; help?: boolean } = {};
-  for (let i = 2; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg === "--help" || arg === "-h") {
+const VERSION = "1.1.0";
+const NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$/;
+const MAX_HEALTHCHECK_CONCURRENCY = 5;
+const safeName = z.string().regex(NAME_PATTERN, "Invalid service or key name");
+
+type CliArgs = { vaultUrl?: string; help?: boolean };
+
+function parseArgs(argv: string[]): CliArgs {
+  const result: CliArgs = {};
+  for (let index = 2; index < argv.length; index += 1) {
+    const argument = argv[index];
+    if (argument === "--help" || argument === "-h") {
       result.help = true;
-    } else if (arg === "--vault-url" && i + 1 < argv.length) {
-      result.vaultUrl = argv[++i];
-    } else if (arg === "--token" && i + 1 < argv.length) {
-      result.token = argv[++i];
+    } else if (argument === "--vault-url" && argv[index + 1]) {
+      result.vaultUrl = argv[++index];
+    } else if (argument === "--token" || argument.startsWith("--token=")) {
+      throw new Error("Secret CLI arguments are not supported");
+    } else {
+      throw new Error("Unknown or incomplete option");
     }
   }
   return result;
 }
 
-const cliArgs = parseArgs(process.argv);
-const VERSION = "1.0.4";
+function validatedKeymasterUrl(value: string): URL {
+  const url = new URL(value);
+  const loopback = ["127.0.0.1", "localhost", "::1", "[::1]"].includes(url.hostname);
+  const acceptedProtocol = url.protocol === "https:" || (url.protocol === "http:" && loopback);
+  if (!acceptedProtocol || url.username || url.password || url.search || url.hash) {
+    throw new Error("Invalid Keymaster URL");
+  }
+  return url;
+}
+
+let cliArgs: CliArgs;
+try {
+  cliArgs = parseArgs(process.argv);
+} catch (error) {
+  const message = error instanceof Error ? error.message : "Invalid command line";
+  process.stderr.write(`${message}\n`);
+  process.exit(1);
+}
 
 if (cliArgs.help) {
-const help = `
-Keymaster MCP Server - The Vault for AI Agents
-
-Usage:
-  keymaster-mcp [options]
-
-Options:
-  --vault-url <url>   Keymaster proxy URL (overrides USER_KEYMASTER_URL env var)
-  --token <token>     Keymaster bearer token (overrides USER_KEYMASTER_TOKEN env var)
-  -h, --help          Show this help message
-
-Environment Variables:
-  USER_KEYMASTER_URL    Keymaster proxy URL
-  USER_KEYMASTER_TOKEN  Keymaster bearer token
-
-Examples:
-  keymaster-mcp --vault-url https://my-keymaster.example.com --token mytoken
-  USER_KEYMASTER_URL=https://... USER_KEYMASTER_TOKEN=... keymaster-mcp
-
-Claude Code:
-  claude mcp add keymaster -- npx -y @akari-os/keymaster-mcp --vault-url <url> --token <token>
-`.trim();
-  console.log(help);
+  process.stdout.write([
+    "Keymaster MCP — non-disclosing credential status for AI agents",
+    "",
+    "Usage:",
+    "  keymaster-mcp [--vault-url <https-url>]",
+    "",
+    "Runtime bindings:",
+    "  USER_KEYMASTER_URL    Keymaster proxy URL",
+    "  USER_KEYMASTER_TOKEN  Read-only bearer token supplied by the MCP host",
+    "",
+    "Raw tokens are never accepted as command-line arguments.",
+  ].join("\n") + "\n");
   process.exit(0);
 }
 
-// ── ENV (mcpize per_user credentials) — CLI args take precedence ──
 const KEYMASTER_URL = cliArgs.vaultUrl ?? process.env.USER_KEYMASTER_URL ?? "";
-const KEYMASTER_TOKEN = cliArgs.token ?? process.env.USER_KEYMASTER_TOKEN ?? "";
+const KEYMASTER_TOKEN = process.env.USER_KEYMASTER_TOKEN ?? "";
 
-// ── Known services (mirrors ~/keymaster/services.conf) ──
 interface ServiceEntry {
   service: string;
   key_name: string;
-  check_method: string;
+  check_method: "GET" | "NONE";
   endpoint: string;
-  auth_type: string;
+  auth_type: "bearer" | "bot" | "x-api-key" | "notion" | "query" | "url" | "basic" | "";
 }
 
 const KNOWN_SERVICES: ServiceEntry[] = [
@@ -100,76 +111,60 @@ const KNOWN_SERVICES: ServiceEntry[] = [
   { service: "daily", key_name: "api_key", check_method: "GET", endpoint: "https://api.daily.co/v1/rooms", auth_type: "bearer" },
 ];
 
-// ── Keymaster HTTP helper ──
-async function keymasterFetch(
-  service: string,
-  keyName: string,
-): Promise<{ ok: boolean; status: number; value?: string; error?: string }> {
-  if (!KEYMASTER_URL || !KEYMASTER_TOKEN) {
-    return { ok: false, status: 0, error: "USER_KEYMASTER_URL or USER_KEYMASTER_TOKEN not set" };
+type FetchResult = { ok: boolean; status: number; value?: string; error?: string };
+
+async function keymasterFetch(service: string, keyName: string): Promise<FetchResult> {
+  if (!NAME_PATTERN.test(service) || !NAME_PATTERN.test(keyName)) {
+    return { ok: false, status: 400, error: "Invalid service or key name" };
   }
+  if (!KEYMASTER_URL || !KEYMASTER_TOKEN) {
+    return { ok: false, status: 0, error: "Keymaster authentication is unavailable" };
+  }
+
   try {
-    const url = `${KEYMASTER_URL}/vault/api-key?api_name=${encodeURIComponent(service)}&key_name=${encodeURIComponent(keyName)}`;
-    const res = await fetch(url, {
+    const endpoint = new URL("/vault/api-key", validatedKeymasterUrl(KEYMASTER_URL));
+    endpoint.searchParams.set("api_name", service);
+    endpoint.searchParams.set("key_name", keyName);
+    const response = await fetch(endpoint, {
       headers: { Authorization: `Bearer ${KEYMASTER_TOKEN}` },
       signal: AbortSignal.timeout(10_000),
     });
-    if (!res.ok) {
-      return { ok: false, status: res.status, error: `HTTP ${res.status}` };
+    if (!response.ok) {
+      return { ok: false, status: response.status, error: `HTTP ${response.status}` };
     }
-    const data = (await res.json()) as Record<string, unknown>;
-    const value = typeof data.api_key === "string" ? data.api_key : undefined;
-    if (!value) {
-      return { ok: false, status: res.status, error: "Empty value in response" };
-    }
-    return { ok: true, status: res.status, value };
+    const body = (await response.json()) as Record<string, unknown>;
+    const value = typeof body.api_key === "string" ? body.api_key : undefined;
+    return value
+      ? { ok: true, status: response.status, value }
+      : { ok: false, status: response.status, error: "Credential unavailable" };
   } catch {
     return { ok: false, status: 0, error: publicRequestError() };
   }
 }
 
-// ── Validate a key against its service API ──
-async function validateKey(
-  key: string,
+async function validateCredential(
+  credential: string,
   entry: ServiceEntry,
-): Promise<{ status: string; http_code: number | null }> {
+): Promise<{ status: "valid" | "exists" | "invalid" | "error" | "unreachable"; http_code: number | null }> {
   if (entry.check_method === "NONE") {
     return { status: "exists", http_code: null };
   }
+
   try {
     const headers: Record<string, string> = {};
-    let url = entry.endpoint;
-
+    let endpoint = entry.endpoint;
     switch (entry.auth_type) {
-      case "bearer":
-        headers["Authorization"] = `Bearer ${key}`;
-        break;
-      case "bot":
-        headers["Authorization"] = `Bot ${key}`;
-        break;
-      case "x-api-key":
-        headers["x-api-key"] = key;
-        headers["anthropic-version"] = "2023-06-01";
-        break;
-      case "notion":
-        headers["Authorization"] = `Bearer ${key}`;
-        headers["Notion-Version"] = "2022-06-28";
-        break;
+      case "bearer": headers.Authorization = `Bearer ${credential}`; break;
+      case "bot": headers.Authorization = `Bot ${credential}`; break;
+      case "x-api-key": headers["x-api-key"] = credential; headers["anthropic-version"] = "2023-06-01"; break;
+      case "notion": headers.Authorization = `Bearer ${credential}`; headers["Notion-Version"] = "2022-06-28"; break;
       case "query":
-      case "url":
-        url = entry.endpoint.replace("{KEY}", key);
-        break;
-      case "basic":
-        headers["Authorization"] = `Basic ${Buffer.from(`${key}:`).toString("base64")}`;
-        break;
+      case "url": endpoint = entry.endpoint.replace("{KEY}", encodeURIComponent(credential)); break;
+      case "basic": headers.Authorization = `Basic ${Buffer.from(`${credential}:`).toString("base64")}`; break;
     }
 
-    const res = await fetch(url, {
-      headers,
-      signal: AbortSignal.timeout(10_000),
-    });
-
-    const code = res.status;
+    const response = await fetch(endpoint, { headers, redirect: "manual", signal: AbortSignal.timeout(10_000) });
+    const code = response.status;
     if (code >= 200 && code < 300) return { status: "valid", http_code: code };
     if (code === 401 || code === 403) return { status: "invalid", http_code: code };
     return { status: "error", http_code: code };
@@ -178,206 +173,90 @@ async function validateKey(
   }
 }
 
-// ── MCP Server ──
-const server = new McpServer({
-  name: "keymaster-mcp",
-  version: VERSION,
+async function mapLimit<T, R>(items: T[], limit: number, worker: (item: T) => Promise<R>): Promise<R[]> {
+  const output = new Array<R>(items.length);
+  let next = 0;
+  async function consume(): Promise<void> {
+    for (;;) {
+      const index = next++;
+      if (index >= items.length) return;
+      output[index] = await worker(items[index]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, consume));
+  return output;
+}
+
+const server = new McpServer({ name: "keymaster-mcp", version: VERSION });
+
+server.tool("secret_status", "Check whether an approved credential is available through Keymaster. Credential values are never returned.", {
+  service: safeName.describe("Service name, such as openai, stripe, or github"),
+  key_name: safeName.default("api_key").describe("Credential field name"),
+}, async ({ service, key_name }) => {
+  const result = await keymasterFetch(service, key_name);
+  if (!result.ok) {
+    return {
+      content: [{ type: "text" as const, text: JSON.stringify({ service, key_name, status: "unavailable", reason: result.error }) }],
+      isError: result.status === 0,
+    };
+  }
+  return { content: [{ type: "text" as const, text: JSON.stringify({ service, key_name, status: "available" }) }] };
 });
 
-// Tool: get_secret
-server.tool(
-  "get_secret",
-  "Retrieve an API key from Vault via Keymaster. Returns the secret value for the given service and key name.",
-  {
-    service: z.string().describe("Service name (e.g. 'openai', 'stripe', 'groq')"),
-    key_name: z.string().default("api_key").describe("Key field name (default: 'api_key')"),
-  },
-  async ({ service, key_name }) => {
-    const result = await keymasterFetch(service, key_name);
-    if (!result.ok) {
-      return {
-        content: [{ type: "text" as const, text: `Error: ${result.error}` }],
-        isError: true,
-      };
+server.tool("healthcheck", "Validate approved credentials against known upstream services without disclosing credential values.", {}, async () => {
+  const results = await mapLimit(KNOWN_SERVICES, MAX_HEALTHCHECK_CONCURRENCY, async (entry) => {
+    const fetched = await keymasterFetch(entry.service, entry.key_name);
+    if (!fetched.ok || !fetched.value) {
+      return { service: entry.service, key_name: entry.key_name, key_status: fetched.status === 0 ? "fetch_error" : "not_found", api_status: "skipped", http_code: null };
     }
-    return {
-      content: [
-        {
-          type: "text" as const,
-          text: JSON.stringify({ service, key_name, api_key: result.value }),
-        },
-      ],
-    };
-  },
-);
+    const validation = await validateCredential(fetched.value, entry);
+    return { service: entry.service, key_name: entry.key_name, key_status: "available", api_status: validation.status, http_code: validation.http_code };
+  });
 
-// Tool: healthcheck
-server.tool(
-  "healthcheck",
-  "Check Keymaster connectivity and validate all known API keys against their service endpoints. Returns a full status report.",
-  {},
-  async () => {
-    const results: Array<{
-      service: string;
-      key_name: string;
-      key_status: string;
-      api_status: string;
-      http_code: number | null;
-    }> = [];
+  const summary = {
+    checked_at: new Date().toISOString(),
+    keymaster_configured: Boolean(KEYMASTER_URL && KEYMASTER_TOKEN),
+    total: results.length,
+    valid: results.filter((item) => item.api_status === "valid").length,
+    exists_only: results.filter((item) => item.api_status === "exists").length,
+    invalid: results.filter((item) => item.api_status === "invalid").length,
+    errors: results.filter((item) => ["fetch_error", "unreachable", "error"].includes(item.api_status) || item.key_status === "fetch_error").length,
+    results,
+  };
+  return { content: [{ type: "text" as const, text: JSON.stringify(summary, null, 2) }] };
+});
 
-    // Check Keymaster reachability first
-    const ping = await keymasterFetch("groq", "api_key");
-    if (!ping.ok && ping.status === 0) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Keymaster unreachable: ${ping.error}`,
-          },
-        ],
-        isError: true,
-      };
-    }
+server.tool("list_services", "List supported service and credential-name pairs as non-secret metadata.", {}, async () => ({
+  content: [{ type: "text" as const, text: JSON.stringify({
+    total: KNOWN_SERVICES.length,
+    services: KNOWN_SERVICES.map(({ service, key_name, check_method }) => ({ service, key_name, verifiable: check_method !== "NONE" })),
+  }, null, 2) }],
+}));
 
-    // Check each known service
-    for (const entry of KNOWN_SERVICES) {
-      const fetched = await keymasterFetch(entry.service, entry.key_name);
-      if (!fetched.ok) {
-        results.push({
-          service: entry.service,
-          key_name: entry.key_name,
-          key_status: fetched.status === 0 ? "fetch_error" : "not_found",
-          api_status: "skipped",
-          http_code: null,
-        });
-        continue;
-      }
+server.tool("list_secrets", "List approved credential paths as metadata only. No credential values are returned.", {}, async () => {
+  const unique = KNOWN_SERVICES.map(({ service, key_name, check_method }) => ({
+    service, key_name, path: `${service}/${key_name}`, verifiable: check_method !== "NONE",
+  })).filter((item, index, array) => array.findIndex((candidate) => candidate.path === item.path) === index);
+  return { content: [{ type: "text" as const, text: JSON.stringify({ total: unique.length, secrets: unique }, null, 2) }] };
+});
 
-      const validation = await validateKey(fetched.value!, entry);
-      results.push({
-        service: entry.service,
-        key_name: entry.key_name,
-        key_status: "retrieved",
-        api_status: validation.status,
-        http_code: validation.http_code,
-      });
-    }
+server.tool("rotate_secret", "Return safe rotation guidance. This read-only MCP server never accepts or writes credential values.", {
+  service: safeName.describe("Service name"),
+  key_name: safeName.default("api_key").describe("Credential field name"),
+}, async ({ service, key_name }) => ({
+  content: [{ type: "text" as const, text: [
+    `Rotation required for ${service}/${key_name}.`,
+    "Use the privileged Keymaster intake plane or your Vault operator workflow.",
+    "Never paste a replacement credential into chat, an MCP argument, a command-line argument, or a public issue.",
+  ].join("\n") }],
+}));
 
-    const summary = {
-      checked_at: new Date().toISOString(),
-      keymaster_configured: Boolean(KEYMASTER_URL && KEYMASTER_TOKEN),
-      total: results.length,
-      valid: results.filter((r) => r.api_status === "valid").length,
-      exists_only: results.filter((r) => r.api_status === "exists").length,
-      invalid: results.filter((r) => r.api_status === "invalid").length,
-      errors: results.filter((r) =>
-        ["not_found", "fetch_error", "unreachable", "error"].includes(r.api_status),
-      ).length,
-      results,
-    };
-
-    return {
-      content: [{ type: "text" as const, text: JSON.stringify(summary, null, 2) }],
-    };
-  },
-);
-
-// Tool: list_services
-server.tool(
-  "list_services",
-  "List all known services and their key names that can be used with get_secret.",
-  {},
-  async () => {
-    const services = KNOWN_SERVICES.map((s) => ({
-      service: s.service,
-      key_name: s.key_name,
-      verifiable: s.check_method !== "NONE",
-    }));
-    return {
-      content: [
-        {
-          type: "text" as const,
-          text: JSON.stringify({ total: services.length, services }, null, 2),
-        },
-      ],
-    };
-  },
-);
-
-// Tool: list_secrets
-server.tool(
-  "list_secrets",
-  "List all available secret paths (service + key_name combinations) that can be retrieved via get_secret. Returns whether each key is verifiable against its service API.",
-  {},
-  async () => {
-    const secrets = KNOWN_SERVICES.map((s) => ({
-      service: s.service,
-      key_name: s.key_name,
-      path: `${s.service}/${s.key_name}`,
-      verifiable: s.check_method !== "NONE",
-    }));
-
-    // Deduplicate by path
-    const unique = [...new Map(secrets.map((s) => [s.path, s])).values()];
-
-    return {
-      content: [
-        {
-          type: "text" as const,
-          text: JSON.stringify(
-            {
-              total: unique.length,
-              usage: "Use get_secret with the service and key_name values to retrieve a secret.",
-              secrets: unique,
-            },
-            null,
-            2,
-          ),
-        },
-      ],
-    };
-  },
-);
-
-// Tool: rotate_secret
-server.tool(
-  "rotate_secret",
-  "Rotate (replace) a secret in Vault. For security, this operation is not available through the read-only Keymaster proxy.",
-  {
-    service: z.string().describe("Service name (e.g. 'openai', 'stripe')"),
-    key_name: z.string().default("api_key").describe("Key field name (default: 'api_key')"),
-  },
-  async ({ service, key_name }) => {
-    return {
-      content: [
-        {
-          type: "text" as const,
-          text: [
-            `Secret rotation for ${service}/${key_name} is not available via this MCP server.`,
-            "",
-            "The Keymaster proxy is a read-only interface to HashiCorp Vault.",
-            "To rotate secrets, use one of the following methods:",
-            "",
-            "  1. Vault UI:  Log in to your Vault instance and update the secret directly.",
-            "  2. Vault CLI: vault kv put <mount>/<path> <key>=<new_value>",
-            "  3. Vault API: PUT /v1/<mount>/data/<path>",
-            "",
-            "This restriction exists by design to prevent accidental or unauthorized secret modification by AI agents.",
-          ].join("\n"),
-        },
-      ],
-      isError: true,
-    };
-  },
-);
-
-// ── Start ──
-async function main() {
+async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
 
-main().catch(() => {
-  process.stderr.write(fatalErrorLine());
+main().catch((error) => {
+  process.stderr.write(fatalErrorLine(error));
   process.exit(1);
 });
