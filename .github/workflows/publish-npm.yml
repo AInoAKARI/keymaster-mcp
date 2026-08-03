@@ -36,7 +36,7 @@ jobs:
       PACKAGE_NAME: "@akari-os/keymaster-mcp"
       MCP_NAME: "io.github.ainoakari/keymaster-mcp"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: true
       - uses: actions/setup-node@v5

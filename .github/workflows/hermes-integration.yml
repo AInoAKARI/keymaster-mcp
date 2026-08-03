@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Clone pinned-compatible Hermes main
         run: git clone --depth 1 https://github.com/NousResearch/hermes-agent.git /tmp/hermes-agent
       - name: Verify upstream source blob
