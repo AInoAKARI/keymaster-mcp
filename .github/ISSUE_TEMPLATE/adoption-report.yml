@@ -1,0 +1,93 @@
+name: Real-world adoption report
+description: Report an independently observed outcome produced with Keymaster MCP or Outcome Contract.
+title: "Adoption: "
+labels:
+  - adoption
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for using Keymaster MCP or Outcome Contract.
+
+        This form is for real-world outcomes, not installation, deployment, registry listing, HTTP 200, self-test, self-payment, or an executor's own completion report.
+
+        Do not include API keys, bearer tokens, private URLs, personal data, or confidential evidence. Use redacted provider event IDs, timestamps, public links, or integrity hashes where appropriate.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component used
+      options:
+        - Keymaster MCP
+        - Outcome Contract
+        - Both
+    validations:
+      required: true
+
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Real workflow
+      description: What real task or obligation was being completed?
+      placeholder: One agent retrieved a GitHub credential at runtime and completed...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: outcome_type
+    attributes:
+      label: Outcome type
+      options:
+        - Human time reclaimed
+        - Cost avoided
+        - Risk removed
+        - Obligation completed
+        - External value received
+        - Intended recipient response
+        - Cash received
+        - Other externally observed result
+    validations:
+      required: true
+
+  - type: textarea
+    id: before_after
+    attributes:
+      label: What changed?
+      description: Describe the before/after boundary, including removed human steps or closed leak paths where relevant.
+      placeholder: Before: 6 manual copy/paste steps. After: 0 manual secret handling steps.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Independent evidence markers
+      description: Add redacted event IDs, public acknowledgements, timestamps, before/after measurements, or integrity hashes. Do not include secrets.
+      placeholder: provider_event_id=redacted_123; observed_at=2026-08-04T...
+    validations:
+      required: true
+
+  - type: textarea
+    id: truth_boundary
+    attributes:
+      label: Truth boundary
+      description: What does the evidence prove, and what does it not prove?
+      placeholder: Proves that the intended recipient acknowledged delivery; does not prove long-term retention.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Safety check
+      options:
+        - label: I confirmed that this report contains no credentials, bearer tokens, private URLs, personal data, or confidential evidence.
+          required: true
+
+  - type: checkboxes
+    id: quote_permission
+    attributes:
+      label: Public learning
+      options:
+        - label: AIﾉアカリ☆ may quote this report publicly with attribution.
+        - label: AIﾉアカリ☆ may quote this report publicly without attribution.
