@@ -36,10 +36,10 @@ jobs:
       PACKAGE_NAME: "@akari-os/keymaster-mcp"
       MCP_NAME: "io.github.ainoakari/keymaster-mcp"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: true
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: "lts/*"
           registry-url: https://registry.npmjs.org
@@ -92,7 +92,7 @@ jobs:
           subject-path: keymaster-mcp/sbom.cdx.json
 
       - name: Preserve release artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: keymaster-mcp-${{ steps.meta.outputs.version }}-supply-chain
           path: |
