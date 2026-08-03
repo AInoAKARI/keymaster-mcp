@@ -7,17 +7,29 @@ updates:
       day: monday
       time: "06:00"
       timezone: Asia/Tokyo
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 6
     groups:
-      mcp-runtime:
+      mcp-sdk-v1:
         patterns:
           - "@modelcontextprotocol/*"
+      validation-runtime:
+        patterns:
           - "zod"
       development-toolchain:
-        dependency-type: development
-    labels:
-      - dependencies
-      - security
+        patterns:
+          - "typescript"
+          - "@types/node"
+          - "ts-node"
+    ignore:
+      - dependency-name: "zod"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "typescript"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "@types/node"
+        update-types:
+          - "version-update:semver-major"
     commit-message:
       prefix: deps
 
@@ -28,9 +40,6 @@ updates:
       day: monday
       time: "06:15"
       timezone: Asia/Tokyo
-    open-pull-requests-limit: 5
-    labels:
-      - dependencies
-      - security
+    open-pull-requests-limit: 8
     commit-message:
       prefix: ci
