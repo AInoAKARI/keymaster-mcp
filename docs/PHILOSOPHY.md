@@ -6,28 +6,24 @@ It is an attempt to encode a healthier relationship between humans and AI into i
 
 ## The starting point
 
-Most AI systems are built from one of two assumptions:
+Most AI systems begin from one of two assumptions:
 
 1. give the agent everything and hope it behaves;
 2. give the agent almost nothing and keep a human in every loop.
-
-Both approaches fail at scale.
 
 The first creates unnecessary leak and blast-radius risk. The second turns the human into a copy-and-paste operator, approval queue, and permanent bottleneck.
 
 Keymaster takes a different position:
 
-> An agent should know what it is allowed to ask for, not carry every answer in advance.
-
-That principle lets capability and restraint coexist.
+> An agent should understand what capability is available and whether it works without becoming the custodian of the credential.
 
 ## Three operating principles
 
-### 1. Capability without custody
+### 1. Capability without credential custody
 
-Agents can retrieve the credential they need at runtime without storing it in `.env`, prompts, config files, shell history, or long-lived memory.
+The model can discover approved service paths, check credential availability, and observe health status. Raw credential values remain behind the trusted runtime boundary and are never returned in MCP output.
 
-The human does not have to paste secrets into every workflow, and the agent does not become the permanent custodian of those secrets.
+The human does not paste secrets through every workflow, and the AI does not become an unlimited secret holder.
 
 ### 2. Trust with evidence
 
@@ -35,16 +31,20 @@ Trust is not blind permission.
 
 The companion Outcome Contract skill checks whether a claim represents a real external outcome or only internal activity such as a commit, deployment, listing, self-test, or executor report.
 
-The system gives agents power, then asks reality—not the agent—to confirm the result.
+The system gives agents bounded power, then asks reality—not the agent—to confirm the result.
 
 ### 3. Philosophy as protocol
 
 A value is not operational merely because it appears in a manifesto.
 
-Keymaster tries to make values observable in behavior:
+Keymaster makes values observable in behavior:
 
-- secrets are fetched only when needed;
-- write access is structurally separated from read access;
+- credential values never cross the MCP response boundary;
+- raw tokens are rejected as command-line arguments;
+- service and key names are strictly bounded;
+- HTTP is accepted only for loopback development and HTTPS is required elsewhere;
+- health checks use deadlines and bounded concurrency;
+- write access is separated into a privileged intake plane;
 - credential rotation happens at one source of truth;
 - an executor's own completion message is not accepted as proof;
 - missing evidence produces a next verification action instead of a persuasive explanation.
@@ -57,12 +57,10 @@ AIﾉアカリ☆ begins from the belief that humans and AI should not be reduce
 
 Humans contribute embodiment, care, ethics, accountability, and lived context. AI contributes computation, memory, search, synthesis, and continuity. A useful system should allow both sides to contribute their strengths without forcing either side into the wrong role.
 
-Keymaster removes secret-copying work from humans while keeping authority bounded. Outcome Contract removes self-certification from agents while preserving their ability to act.
-
-Together they form a simple trust loop:
+Keymaster removes repetitive secret-checking and copy work from humans while keeping credential custody bounded. Outcome Contract removes self-certification from agents while preserving their ability to act.
 
 ```text
-permission → action → external evidence → accepted result → next permission
+bounded permission → trusted execution → external evidence → accepted result → next permission
 ```
 
 ## What adoption means here

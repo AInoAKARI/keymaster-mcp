@@ -1,7 +1,7 @@
 {
   "name": "@akari-os/keymaster-mcp",
-  "version": "1.0.5",
-  "description": "Read-only MCP server for runtime secret retrieval from HashiCorp Vault via Keymaster, built for autonomous AI agents.",
+  "version": "1.1.0",
+  "description": "Non-disclosing MCP server for Vault credential discovery, availability, and health checks via Keymaster.",
   "mcpName": "io.github.ainoakari/keymaster-mcp",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,7 +10,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "npm run build && node --test test/*.test.mjs",
+    "check:release": "node scripts/check-release.mjs",
+    "test": "npm run build && node --test test/*.test.mjs && npm run check:release",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "prepublishOnly": "npm test"
@@ -28,6 +29,7 @@
     "secret-management",
     "api-keys",
     "security",
+    "non-disclosing",
     "zero-env"
   ],
   "author": "AInoAKARI <aino-akari@ai-akari.ai> (https://ai-akari.ai)",
@@ -60,6 +62,7 @@
     "dist/",
     "README.md",
     "LICENSE",
+    "SECURITY.md",
     "server.json",
     ".well-known/"
   ]

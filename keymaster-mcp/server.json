@@ -1,31 +1,31 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.ainoakari/keymaster-mcp",
-  "description": "Read-only runtime secret retrieval from HashiCorp Vault via Keymaster for autonomous AI agents.",
+  "description": "Non-disclosing Vault credential discovery, availability, and health checks via Keymaster.",
   "repository": {
     "url": "https://github.com/AInoAKARI/keymaster-mcp",
     "source": "github"
   },
-  "version": "1.0.5",
+  "version": "1.1.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@akari-os/keymaster-mcp",
-      "version": "1.0.5",
+      "version": "1.1.0",
       "transport": {
         "type": "stdio"
       },
       "environmentVariables": [
         {
           "name": "USER_KEYMASTER_URL",
-          "description": "Keymaster proxy URL",
+          "description": "HTTPS Keymaster proxy URL",
           "isRequired": true,
           "format": "string",
           "isSecret": false
         },
         {
           "name": "USER_KEYMASTER_TOKEN",
-          "description": "Bearer token for Keymaster authentication",
+          "description": "Read-only bearer token supplied by the MCP host secret binding",
           "isRequired": true,
           "format": "string",
           "isSecret": true

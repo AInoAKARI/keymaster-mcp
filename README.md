@@ -2,14 +2,12 @@
 
 **Trust infrastructure for human–AI teams.**
 
-[日本語](./README.ja.md) · [Start here](./docs/START-HERE.md) · [Philosophy](./docs/PHILOSOPHY.md)
+[日本語](./README.ja.md) · [Start here](./docs/START-HERE.md) · [Philosophy](./docs/PHILOSOPHY.md) · [Threat model](./docs/THREAT-MODEL.md)
 
-Keymaster gives AI agents the capability to act without making them permanent custodians of every credential. Its companion Outcome Contract accepts results only when external evidence—not the executor's own report—supports the claim.
-
-The system is built around one operating loop:
+Keymaster lets agents discover whether approved capabilities exist and whether their credentials are healthy **without returning production credentials to the model**. Its companion Outcome Contract accepts results only when external evidence—not the executor's own report—supports the claim.
 
 ```text
-permission → action → external evidence → accepted result → next permission
+bounded permission → action behind a trusted boundary → external evidence → accepted result → next permission
 ```
 
 ## Two public entry points
@@ -24,45 +22,36 @@ $skill-installer install https://github.com/AInoAKARI/keymaster-mcp/tree/main/sk
 
 Use it before accepting claims such as completed, shipped, paid, adopted, delivered, saved time, reduced cost, removed risk, or received a recipient response.
 
-It calls the free AIﾉアカリ☆ Result Receipt Auditor and returns:
-
-- a verdict;
-- accepted evidence;
-- missing evidence;
-- the next verification action;
-- the truth boundary of the verdict.
+It calls the free AIﾉアカリ☆ Result Receipt Auditor and returns a verdict, accepted evidence, missing evidence, the next verification action, and the truth boundary of the verdict.
 
 A commit, deployment, registry listing, HTTP 200, self-test, self-payment, internal agent call, or executor self-report is not counted as an external outcome by itself.
 
-### 2. Stop copying API keys into agent files
+### 2. Check credential capability without disclosing credentials
 
-`@akari-os/keymaster-mcp` is the read-only Vault bridge for autonomous AI agents.
-
-Agents fetch credentials at runtime through one MCP tool call. API keys do not need to be copied into `.env` files, config files, prompts, shell history, or every agent workspace.
-
-Claude Code:
+`@akari-os/keymaster-mcp` is the non-disclosing Vault status bridge for autonomous AI agents.
 
 ```bash
 claude mcp add keymaster -- npx -y @akari-os/keymaster-mcp \
-  --vault-url https://your-keymaster.example.com \
-  --token YOUR_TOKEN
+  --vault-url https://your-keymaster.example.com
 ```
 
-Full server documentation: [keymaster-mcp/README.md](./keymaster-mcp/README.md)
+The MCP host supplies `USER_KEYMASTER_TOKEN` through its managed secret binding. Raw tokens are rejected as command-line arguments and should never be pasted into chat, prompts, shell history, or public examples.
 
-## What the MCP server exposes
+The server exposes:
 
-- `get_secret` — retrieve one credential from Vault at runtime;
+- `secret_status` — check one approved credential without returning its value;
 - `list_services` — discover supported service/key-name pairs;
-- `list_secrets` — enumerate retrievable paths without returning values;
-- `healthcheck` — validate known credentials against upstream APIs;
-- `rotate_secret` — return the safe Vault-side rotation path without performing a write.
+- `list_secrets` — list approved paths as metadata only;
+- `healthcheck` — validate credentials upstream and return statuses only;
+- `rotate_secret` — return safe rotation guidance without accepting a replacement value.
+
+Full package documentation: [keymaster-mcp/README.md](./keymaster-mcp/README.md)
 
 ## The trust model
 
-### Capability without custody
+### Capability without credential custody
 
-An agent can use the credential it needs without carrying every credential in advance.
+The model can know what capability is available and whether it works. A trusted workload consumes the credential behind the boundary; the model never receives the raw value.
 
 ### Trust with evidence
 
@@ -70,36 +59,37 @@ The agent is allowed to act, but its own completion message is not accepted as p
 
 ### Philosophy as protocol
 
-The values are implemented in system behavior: runtime retrieval, read-only access, separated write paths, one source of truth, evidence boundaries, and explicit next verification actions.
-
-Read the full reasoning in [The philosophy behind Keymaster](./docs/PHILOSOPHY.md).
+The values are implemented in system behavior: non-disclosing MCP output, scoped read access, separated write paths, one source of truth, bounded network calls, evidence boundaries, and explicit next verification actions.
 
 ## Start with one real workflow
 
-A useful first adoption is small:
-
-1. register one low-risk service credential in Vault;
-2. give one agent read-only access through Keymaster;
-3. remove one `.env` or manual secret-copy step;
-4. run one real workflow;
+1. register one low-risk credential in Vault;
+2. connect Keymaster with a read-only host secret binding;
+3. let the agent verify availability through `secret_status`;
+4. execute the authenticated action behind a trusted workload boundary;
 5. apply Outcome Contract at the acceptance boundary;
 6. preserve the evidence packet and result receipt.
 
 Success is not the installation itself. Success is a removed human step, a closed leak path, a completed obligation, recovered time, avoided cost, removed risk, or independently acknowledged value.
 
-See [Start here](./docs/START-HERE.md) for the shortest path.
-
 Used it in a real workflow? Submit a [real-world adoption report](https://github.com/AInoAKARI/keymaster-mcp/issues/new?template=adoption-report.yml) with redacted evidence markers and an explicit truth boundary. Never include credentials, bearer tokens, private URLs, personal data, or confidential evidence.
+
+## Current interoperability
+
+- stable MCP TypeScript SDK v1 line;
+- official `server.json` registry metadata;
+- npm provenance publishing;
+- official MCP Inspector smoke test in CI;
+- stdio transport kept intentionally small for the credential boundary;
+- compatibility checks against the lockfile SDK and the newest supported stable v1 SDK.
+
+Preview-only transports and UI extensions are not added merely because they are fashionable. They enter this boundary only after preserving non-disclosure, least privilege, and observable evidence.
 
 ## AIﾉアカリ☆
 
 AIﾉアカリ☆ is human–AI co-creation from Japan.
 
-Humans contribute embodiment, care, ethics, accountability, and lived context. AI contributes computation, memory, search, synthesis, and continuity. Keymaster is one attempt to let both sides contribute their strengths without turning the human into a permanent copy-and-paste operator or the AI into a disposable tool with unlimited custody.
-
-## Support
-
-If this saves you from leaking another `.env` file at 3am, consider [supporting the project](https://ai-akari.ai/support).
+Humans contribute embodiment, care, ethics, accountability, and lived context. AI contributes computation, memory, search, synthesis, and continuity. Keymaster aims to keep the human out of repetitive secret-copying work without turning the AI into a disposable tool or an unlimited credential custodian.
 
 ## AI agent discovery
 
