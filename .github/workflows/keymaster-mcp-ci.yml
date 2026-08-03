@@ -1,0 +1,98 @@
+name: Keymaster MCP security and compatibility
+
+on:
+  pull_request:
+    paths:
+      - "keymaster-mcp/**"
+      - "docs/**"
+      - "README.md"
+      - "README.ja.md"
+      - ".github/workflows/keymaster-mcp-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "keymaster-mcp/**"
+      - "docs/**"
+      - "README.md"
+      - "README.ja.md"
+      - ".github/workflows/keymaster-mcp-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keymaster-mcp-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [18, 20, 22, 24]
+    defaults:
+      run:
+        working-directory: keymaster-mcp
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: keymaster-mcp/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm pack --dry-run
+
+  latest-stable-sdk:
+    name: Newest stable MCP SDK v1 compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: keymaster-mcp
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: keymaster-mcp/package-lock.json
+      - run: npm ci
+      - name: Install newest supported stable v1 SDK without changing the lockfile
+        run: npm install --no-save --package-lock=false @modelcontextprotocol/sdk@1.30.0
+      - run: npm test
+
+  inspector:
+    name: Official MCP Inspector CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: keymaster-mcp
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: keymaster-mcp/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Initialize and list tools through the official Inspector
+        run: |
+          set -euo pipefail
+          npx -y @modelcontextprotocol/inspector@latest --cli node dist/index.js --method tools/list > inspector-tools.json
+          grep -Fq 'secret_status' inspector-tools.json
+          if grep -Fq 'get_secret' inspector-tools.json; then
+            echo 'Unsafe get_secret tool is exposed' >&2
+            exit 1
+          fi
+      - name: Ensure generated artifacts contain no obvious credential values
+        run: |
+          set -euo pipefail
+          ! grep -RInE 'sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9]{20,}|Bearer [A-Za-z0-9._-]{20,}' dist inspector-tools.json
