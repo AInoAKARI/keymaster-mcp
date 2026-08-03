@@ -89,6 +89,8 @@ Success is not the installation itself. Success is a removed human step, a close
 
 See [Start here](./docs/START-HERE.md) for the shortest path.
 
+Used it in a real workflow? Submit a [real-world adoption report](https://github.com/AInoAKARI/keymaster-mcp/issues/new?template=adoption-report.yml) with redacted evidence markers and an explicit truth boundary. Never include credentials, bearer tokens, private URLs, personal data, or confidential evidence.
+
 ## AIﾉアカリ☆
 
 AIﾉアカリ☆ is human–AI co-creation from Japan.
