@@ -1,0 +1,93 @@
+diff --git a/src/version-guard.ts b/src/version-guard.ts
+--- a/src/version-guard.ts
++++ b/src/version-guard.ts
+@@
+-/** Minimum Node.js major version supported by the CLI (matches package.json `engines.node`). */
+-export const MIN_SUPPORTED_NODE_MAJOR = 20;
++/** Human-readable supported range, matching package.json `engines.node`. */
++export const SUPPORTED_NODE_RANGE = '20.19+, 22.13+, or 24+';
++export const MIN_SUPPORTED_NODE_MAJOR = 20;
++const MIN_NODE_20_MINOR = 19;
++const MIN_NODE_22_MINOR = 13;
+@@
+ export function parseMajorVersion(nodeVersion: string): number {
+   return Number(nodeVersion.split('.')[0]);
+ }
++
++function parseMajorMinor(nodeVersion: string): { major: number; minor: number } | null {
++  const [majorRaw, minorRaw] = nodeVersion.split('.');
++  const major = Number(majorRaw);
++  const minor = Number(minorRaw);
++  if (!Number.isInteger(major) || !Number.isInteger(minor) || major < 0 || minor < 0) {
++    return null;
++  }
++  return { major, minor };
++}
+@@
+ export function shouldRejectNodeVersion(nodeVersion: string): boolean {
+-  const major = parseMajorVersion(nodeVersion);
+-  return !Number.isNaN(major) && major < MIN_SUPPORTED_NODE_MAJOR;
++  const parsed = parseMajorMinor(nodeVersion);
++  if (parsed === null) return false;
++
++  const { major, minor } = parsed;
++  if (major < 20) return true;
++  if (major === 20) return minor < MIN_NODE_20_MINOR;
++  if (major === 21) return true;
++  if (major === 22) return minor < MIN_NODE_22_MINOR;
++  if (major === 23) return true;
++  return false;
+ }
+diff --git a/src/version-guard.test.ts b/src/version-guard.test.ts
+--- a/src/version-guard.test.ts
++++ b/src/version-guard.test.ts
+@@
+ describe('shouldRejectNodeVersion', () => {
+-  it('rejects majors below the supported floor', () => {
++  it('rejects runtimes outside the declared engines range', () => {
+     expect(shouldRejectNodeVersion('18.19.1')).toBe(true);
+-    expect(shouldRejectNodeVersion('16.20.2')).toBe(true);
+-    expect(shouldRejectNodeVersion('14.21.3')).toBe(true);
++    expect(shouldRejectNodeVersion('20.0.0')).toBe(true);
++    expect(shouldRejectNodeVersion('20.18.99')).toBe(true);
++    expect(shouldRejectNodeVersion('21.99.0')).toBe(true);
++    expect(shouldRejectNodeVersion('22.0.0')).toBe(true);
++    expect(shouldRejectNodeVersion('22.12.99')).toBe(true);
++    expect(shouldRejectNodeVersion('23.99.99')).toBe(true);
+   });
+ 
+-  it('accepts the supported floor and above', () => {
+-    expect(shouldRejectNodeVersion('20.0.0')).toBe(false);
+-    expect(shouldRejectNodeVersion('20.11.0')).toBe(false);
+-    expect(shouldRejectNodeVersion('21.0.0')).toBe(false);
+-    expect(shouldRejectNodeVersion('22.1.0')).toBe(false);
++  it('accepts every supported Node window', () => {
++    expect(shouldRejectNodeVersion('20.19.0')).toBe(false);
++    expect(shouldRejectNodeVersion('20.99.0')).toBe(false);
++    expect(shouldRejectNodeVersion('22.13.0')).toBe(false);
++    expect(shouldRejectNodeVersion('22.99.0')).toBe(false);
++    expect(shouldRejectNodeVersion('24.0.0')).toBe(false);
++    expect(shouldRejectNodeVersion('25.0.0')).toBe(false);
+   });
+ 
+-  it(`treats exactly ${MIN_SUPPORTED_NODE_MAJOR} as supported (boundary)`, () => {
+-    expect(shouldRejectNodeVersion(`${MIN_SUPPORTED_NODE_MAJOR}.0.0`)).toBe(false);
+-    expect(shouldRejectNodeVersion(`${MIN_SUPPORTED_NODE_MAJOR - 1}.9.9`)).toBe(true);
++  it(`keeps the major floor constant at ${MIN_SUPPORTED_NODE_MAJOR}`, () => {
++    expect(shouldRejectNodeVersion(`${MIN_SUPPORTED_NODE_MAJOR}.19.0`)).toBe(false);
++    expect(shouldRejectNodeVersion(`${MIN_SUPPORTED_NODE_MAJOR - 1}.99.99`)).toBe(true);
+   });
+diff --git a/src/index.ts b/src/index.ts
+--- a/src/index.ts
++++ b/src/index.ts
+@@
+-import { shouldRejectNodeVersion } from './version-guard.js';
++import { SUPPORTED_NODE_RANGE, shouldRejectNodeVersion } from './version-guard.js';
+@@
+ if (shouldRejectNodeVersion(process.versions.node)) {
+   process.stderr.write(
+-    `Error: testsprite requires Node.js >= 20 (found ${process.versions.node}).\nInstall the latest LTS from https://nodejs.org\n`,
++    `Error: testsprite requires Node.js ${SUPPORTED_NODE_RANGE} (found ${process.versions.node}).\nInstall a supported Node.js release from https://nodejs.org\n`,
+   );
+   process.exit(1);
+ }
