@@ -1,6 +1,6 @@
 {
   "schema": "ai-akari-revenue-artifact-readiness/1.0",
-  "verified_at": "2026-08-09T13:32:35Z",
+  "verified_at": "2026-08-09T14:02:00Z",
   "repository_commit": "61e25e846a02c69385cae87ad013e1594c711a4d",
   "artifacts": [
     {
@@ -8,7 +8,8 @@
       "target_commit": "4debc58a83377b18be81ae1e5969a300736b2fac",
       "integration": "integrations/mem0-result-claim-audit",
       "patch": "patches/mem0ai-mem0-result-claim-audit.patch",
-      "patch_sha256": "36b04afd66b4a147f3f1270cf84c884e924cf1648675e8a432ab0fc162aaf0df",
+      "patch_sha256": "f356014629365194ae1b67996e66ca6a262d5fa8e6ee047a0bc37868d1689d14",
+      "patch_hash_basis": "GitHub raw blob bytes",
       "git_apply_check": "pass",
       "regression_tests": {
         "command": "python -m unittest -v test_mem0_result_claim_audit.py",
@@ -21,7 +22,8 @@
       "target_commit": "5c0e64eee28ae0f55601cdf29ae3cc03380fea75",
       "integration": "integrations/llamaindex-result-claim-audit",
       "patch": "patches/run-llama-llama-index-result-claim-audit.patch",
-      "patch_sha256": "3b350a3521a2c574a060ae8c46b8825b8187acdc5db974caa82d10e2fe24a9e3",
+      "patch_sha256": "896f9d20a31edbb5a1d1642864a65ca4936985cf9e5738718c20fd046c96d232",
+      "patch_hash_basis": "GitHub raw blob bytes",
       "git_apply_check": "pass",
       "regression_tests": {
         "command": "python -m unittest -v test_llamaindex_result_claim_audit.py",
