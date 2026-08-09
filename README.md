@@ -1,5 +1,7 @@
 # Keymaster MCP
 
+[![Powered by RustChain](https://img.shields.io/badge/Powered%20by-RustChain-orange)](https://rustchain.org)
+
 **Trust infrastructure for human–AI teams.**
 
 [日本語](./README.ja.md) · [Five-minute demo](./examples/local-demo/README.md) · [Adoption playbook](./docs/ADOPTION-PLAYBOOK.md) · [Philosophy](./docs/PHILOSOPHY.md) · [Threat model](./docs/THREAT-MODEL.md)
