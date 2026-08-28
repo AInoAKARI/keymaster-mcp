@@ -1,10 +1,13 @@
 {
-  "name": "@ai-akari/ata-runtime-v0",
+  "name": "@ai-akari/ata-runtime",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.2.0",
   "type": "module",
   "engines": { "node": ">=20" },
   "scripts": {
-    "demo": "node src/demo.mjs"
+    "demo": "node src/demo.mjs",
+    "demo:v1": "node src/demo-v1.mjs",
+    "test": "node --test test/*.test.mjs",
+    "ci": "npm test && npm run demo:v1"
   }
 }
