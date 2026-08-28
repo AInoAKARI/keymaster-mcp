@@ -1,5 +1,6 @@
 import http from 'node:http';
 import { createPaymentRequired, decodeX402Header, encodeX402Header } from './x402_svm.mjs';
+import { createSpendingPolicy } from './spending_policy.mjs';
 
 async function readJson(req) {
   const chunks = []; let size = 0;
@@ -45,21 +46,66 @@ export function createOpenAiCompatibleAtaProxy({ requirements, verifyPayment, ha
   };
 }
 
-export function createBudgetedX402Fetch({ fetchImpl = fetch, authorize, maxAtomicPerRequest = '1000', allowedNetworks = [] }) {
+export function createBudgetedX402Fetch({
+  fetchImpl = fetch,
+  authorize,
+  policy,
+  maxAtomicPerRequest = '1000',
+  maxAtomicPerSession = null,
+  maxAtomicPerDay = null,
+  allowedNetworks = [],
+  allowedAssets = [],
+  budgetStore,
+  requireDurableStore = false,
+  clock
+}) {
   if (typeof authorize !== 'function') throw new Error('authorize is required');
-  return async function paidFetch(url, init = {}) {
+  const spendPolicy = policy ?? createSpendingPolicy({
+    maxAtomicPerRequest,
+    maxAtomicPerSession,
+    maxAtomicPerDay,
+    allowedNetworks,
+    allowedAssets,
+    budgetStore,
+    requireDurableStore,
+    ...(clock ? { clock } : {})
+  });
+  if (!spendPolicy || typeof spendPolicy.reserve !== 'function') throw new Error('policy must provide reserve(requirements)');
+
+  const paidFetch = async function paidFetch(url, init = {}) {
     const first = await fetchImpl(url, init);
     if (first.status !== 402) return first;
     const requiredHeader = first.headers.get('payment-required');
     if (!requiredHeader) return first;
     const required = decodeX402Header(requiredHeader);
-    const candidate = required.accepts?.[0];
-    if (!candidate) return first;
-    if (BigInt(candidate.amount) > BigInt(maxAtomicPerRequest)) throw new Error('x402 price exceeds configured per-request budget');
-    if (allowedNetworks.length && !allowedNetworks.includes(candidate.network)) throw new Error('x402 network is not allowed');
-    const paymentPayload = await authorize({ paymentRequired: required, requirements: candidate });
-    const headers = new Headers(init.headers || {});
-    headers.set('PAYMENT-SIGNATURE', encodeX402Header(paymentPayload));
-    return fetchImpl(url, { ...init, headers });
+
+    let selected = null;
+    let reservation = null;
+    let lastPolicyError = null;
+    for (const candidate of required.accepts ?? []) {
+      try {
+        reservation = await spendPolicy.reserve(candidate);
+        selected = candidate;
+        break;
+      } catch (error) {
+        lastPolicyError = error;
+      }
+    }
+    if (!selected || !reservation) throw lastPolicyError ?? new Error('no x402 payment option allowed by policy');
+
+    try {
+      const paymentPayload = await authorize({ paymentRequired: required, requirements: selected, reservation });
+      const headers = new Headers(init.headers || {});
+      headers.set('PAYMENT-SIGNATURE', encodeX402Header(paymentPayload));
+      const second = await fetchImpl(url, { ...init, headers });
+      if (second.status === 402) reservation.cancel();
+      else reservation.commit();
+      return second;
+    } catch (error) {
+      reservation.cancel();
+      throw error;
+    }
   };
+  paidFetch.policy = spendPolicy;
+  return paidFetch;
 }
