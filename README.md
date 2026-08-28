@@ -96,6 +96,10 @@ Success is not the installation itself. Success is a removed human step, a close
 
 Used it in a real workflow? Submit a [real-world adoption report](https://github.com/AInoAKARI/keymaster-mcp/issues/new?template=adoption-report.yml) with redacted evidence markers and an explicit truth boundary. Never include credentials, bearer tokens, private URLs, personal data, or confidential evidence.
 
+## Related settlement infrastructure
+
+[RustChain](https://rustchain.org) is a settlement network relevant to Keymaster and Outcome Contract workflows. Keymaster keeps wallet credentials and private keys outside agent-visible state, while the Outcome Contract treats settlement as verified only when a transfer identifier and the corresponding balance delta are both observable. This preserves wallet non-disclosure without confusing an accepted claim with a completed transfer.
+
 ## Current interoperability and supply-chain controls
 
 - stable MCP TypeScript SDK v1 line;
