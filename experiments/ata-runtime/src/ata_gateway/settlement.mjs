@@ -22,7 +22,7 @@ export function createNotarySettlement({ notaryWallet }) {
   };
 }
 
-export function createX402FacilitatorAdapter({ facilitatorUrl, paymentPayloadFactory, fetchImpl = fetch }) {
+export function createX402FacilitatorAdapter({ facilitatorUrl, paymentPayloadFactory, evidenceCollector, fetchImpl = fetch }) {
   const base = new URL(facilitatorUrl);
   return {
     async settle({ requirement, context }) {
@@ -42,14 +42,28 @@ export function createX402FacilitatorAdapter({ facilitatorUrl, paymentPayloadFac
       });
       const settleBody = await settleResponse.json();
       if (!settleResponse.ok || settleBody.success === false) throw new Error(settleBody.errorReason || `x402 settle failed: HTTP ${settleResponse.status}`);
-      return {
-        version: 'ata-settlement/0.1',
+
+      const result = {
+        version: 'ata-settlement/0.2',
         rail: 'x402-v2',
-        finality: 'external',
+        finality: 'facilitator-reported',
+        externalVerified: false,
         paymentPayloadHash: sha256(paymentPayload),
         verification: verifyBody,
         settlement: settleBody
       };
+
+      if (typeof evidenceCollector === 'function') {
+        const evidence = await evidenceCollector({ requirement, context, paymentPayload, verification: verifyBody, settlement: settleBody });
+        result.evidence = evidence;
+        result.externalVerified = evidence?.externalTxVerified === true;
+        result.finality = evidence?.settled === true
+          ? 'external-settled'
+          : evidence?.externalTxVerified === true
+            ? 'external-tx-confirmed'
+            : 'facilitator-reported';
+      }
+      return result;
     }
   };
 }
