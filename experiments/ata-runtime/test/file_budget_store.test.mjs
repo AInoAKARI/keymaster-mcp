@@ -4,6 +4,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createFileBudgetStore } from '../src/ata_gateway/file_budget_store.mjs';
+import { createSpendingPolicy } from '../src/ata_gateway/spending_policy.mjs';
 
 test('persists committed and reserved counters across store instances', () => {
   const dir = mkdtempSync(join(tmpdir(), 'ata-budget-'));
@@ -41,4 +42,26 @@ test('corrupt durable state refuses new spend', () => {
   writeFileSync(filePath, '{bad');
   const store = createFileBudgetStore({ filePath, sessionId: 's1' });
   assert.throws(() => store.reserve({ amount: 1n, dayKey: '2026-08-29', maxSession: 10n, maxDay: 10n }), /refusing spend/);
+});
+
+test('file store satisfies requireDurableStore and preserves policy accounting', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ata-budget-'));
+  const store = createFileBudgetStore({ filePath: join(dir, 'budget.json'), sessionId: 'economic-session-1' });
+  const policy = createSpendingPolicy({
+    maxAtomicPerRequest: '1000',
+    maxAtomicPerSession: '2000',
+    maxAtomicPerDay: '3000',
+    allowedNetworks: ['solana:allowed'],
+    allowedAssets: ['USDC'],
+    budgetStore: store,
+    requireDurableStore: true,
+    clock: () => new Date('2026-08-29T04:00:00Z')
+  });
+  const reservation = policy.reserve({ amount: '1000', network: 'solana:allowed', asset: 'USDC' });
+  reservation.commit();
+  const snapshot = policy.snapshot();
+  assert.equal(snapshot.durability, 'durable');
+  assert.equal(snapshot.durabilityScope, 'host-filesystem');
+  assert.equal(snapshot.sessionCommittedAtomic, '1000');
+  assert.equal(snapshot.dayCommittedAtomic, '1000');
 });
