@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-akari.ai/schemas/ata-envelope-0.1.json",
+  "title": "AIﾉアカリ☆ AtA Signed Envelope v0.1",
+  "type": "object",
+  "required": ["version", "type", "sender", "publicKey", "nonce", "timestamp", "body", "signature"],
+  "properties": {
+    "version": { "const": "ata/0.1" },
+    "type": { "enum": ["task.advertise", "task.quote", "task.award", "task.receipt"] },
+    "sender": { "type": "string", "pattern": "^did:akari:" },
+    "publicKey": { "type": "string" },
+    "nonce": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "body": { "type": "object" },
+    "signature": { "type": "string" }
+  },
+  "additionalProperties": false
+}
