@@ -1,0 +1,29 @@
+name: ata-runtime-ci
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/ata-runtime/**'
+      - '.github/workflows/ata-runtime-ci.yml'
+  push:
+    branches:
+      - 'feat/ata-**'
+    paths:
+      - 'experiments/ata-runtime/**'
+      - '.github/workflows/ata-runtime-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: AtA tests and runnable demo
+        working-directory: experiments/ata-runtime
+        run: npm run ci
