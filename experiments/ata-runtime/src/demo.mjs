@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import {
   createAgentServer,
   createCard,
@@ -18,7 +19,7 @@ try {
   const buyer = createIdentity('AIﾉアカリ☆ Buyer Agent');
   const settlement = createDemoSettlement();
   const task = {
-    taskId: crypto.randomUUID?.() ?? `${Date.now()}`,
+    taskId: crypto.randomUUID(),
     skill: 'echo',
     input: 'あなたは私、私はあなた。AtA hello.',
     maxBudget: { asset: 'USDC', amount: '0.005', network: 'eip155:84532' }
