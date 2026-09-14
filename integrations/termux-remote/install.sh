@@ -39,7 +39,8 @@ termux-job-scheduler \
   --period-ms 900000 \
   --persisted true >/dev/null 2>&1 || true
 
-BODY="$(jq -cn '{id:"bootstrap-ready",status:"queued",command:"printf \'AKARI_ANDROID_BRIDGE_OK\\n\'; uname -a; command -v termux-microphone-record || true",cwd:"~",result:"",exit_code:null}')"
+BOOT_CMD="printf 'AKARI_ANDROID_BRIDGE_OK\\n'; uname -a; command -v termux-microphone-record || true"
+BODY="$(jq -cn --arg cmd "$BOOT_CMD" '{id:"bootstrap-ready",status:"queued",command:$cmd,cwd:"~",result:"",exit_code:null}')"
 gh issue edit 3 -R AInoAKARI/akari-automation --body "$BODY" >/dev/null
 
 echo
