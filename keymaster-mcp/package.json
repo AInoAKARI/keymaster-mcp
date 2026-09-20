@@ -53,7 +53,7 @@
   },
   "devDependencies": {
     "typescript": "^5.4.0",
-    "@types/node": "^20.0.0",
+    "@types/node": "^20.19.43",
     "ts-node": "^10.9.0"
   },
   "engines": {
