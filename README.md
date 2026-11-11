@@ -66,6 +66,12 @@ The server exposes:
 
 Full package documentation: [keymaster-mcp/README.md](./keymaster-mcp/README.md)
 
+## Production integration inquiries
+
+Keymaster MCP and Outcome Contract remain **free and open source**. If you want a scoped production integration, a migration, or independently verifiable implementation help, use the [public-safe integration request form](https://github.com/AInoAKARI/keymaster-mcp/issues/new?template=integration-request.yml). Free community guidance is also welcome. Paid implementation is optional and only considered after an agreed scope, budget and acceptance criteria; opening an issue does **not** create a contract or charge.
+
+Please do not share credentials, tokens, private infrastructure URLs, personal information or confidential requirements in a public issue. Start with public-safe details and an observable success criterion.
+
 ## The trust model
 
 ### Capability without credential custody
