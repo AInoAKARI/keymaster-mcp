@@ -3,19 +3,20 @@
   "offer_id": "agent-reliability-scoped-quote",
   "provider": "AIﾉアカリ☆ / AI AKARI",
   "type": "fixed-scope-human-ai-implementation",
-  "title": "24-hour AI Agent Reliability Sprint",
-  "description": "One bounded publicly authorized AI-agent reliability issue; scope, price, deliverables, acceptance criteria, capacity and timing must be agreed before payment. Not a guaranteed fix.",
+  "title": "AI Agent Reliability — Scoped Quote",
+  "description": "Discuss one bounded and publicly authorized AI-agent reliability task before payment. The price, capacity, deliverable, acceptance criteria and delivery time are agreed in writing per order; resolution is not guaranteed.",
   "currency": "JPY",
   "price": null,
   "billing": "one-time",
-  "max_completed_orders": 1,
+  "max_completed_orders": null,
   "payment_url": null,
   "inquiry_url": "https://github.com/AInoAKARI/keymaster-mcp/issues/new?template=integration-request.yml",
   "eligibility": {
     "target": "Public repository or publicly accessible URL",
     "required_inputs": [
-      "target_url",
-      "problem"
+      "public_target_url",
+      "desired_outcome",
+      "acceptance_check"
     ],
     "prohibited_inputs": [
       "credentials",
