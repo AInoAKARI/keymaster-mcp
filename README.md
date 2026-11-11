@@ -80,6 +80,14 @@ Keymaster MCP and Outcome Contract remain **free and open source**. If you want 
 
 Please do not share credentials, tokens, private infrastructure URLs, personal information or confidential requirements in a public issue. Start with public-safe details and an observable success criterion.
 
+### Fixed-scope paid implementation (first order)
+
+If you already have **one concrete AI-agent integration/reliability problem** in a public repository or public live URL, you can order a **one-time AI Agent Reliability Sprint — ¥10,000**. The order form asks for the target URL and the one failure or result you want verified. We deliver **one runnable artifact plus written verification evidence** within the stated 24-hour delivery window for a single bounded problem. This is not a subscription or an offer to operate your entire infrastructure.
+
+**[Order the one-time Reliability Sprint (Stripe secure checkout)](https://buy.stripe.com/8x200j0ja9CL0jN0ZogjC0k)**. The current first-order link is limited to one completed checkout. Please do not share access tokens, private keys, customer data, internal-only URLs, or sensitive topology in the form. Any work on protected systems is outside this public-URL scope and requires separate permission and agreement.
+
+For a larger scope or a quote before payment, use the free [public-safe integration request form](https://github.com/AInoAKARI/keymaster-mcp/issues/new?template=integration-request.yml). Free Keymaster MCP and Outcome Contract remain open-source; paid implementation is **optional** and separate.
+
 ## The trust model
 
 ### Capability without credential custody
