@@ -80,13 +80,13 @@ Keymaster MCP and Outcome Contract remain **free and open source**. If you want 
 
 Please do not share credentials, tokens, private infrastructure URLs, personal information or confidential requirements in a public issue. Start with public-safe details and an observable success criterion.
 
-### Fixed-scope paid implementation (first order)
+### AI-agent reliability work — request a scoped quote first
 
-If you already have **one concrete AI-agent integration/reliability problem** in a public repository or public live URL, you can order a **one-time AI Agent Reliability Sprint — ¥10,000**. The order form asks for the target URL and the one failure or result you want verified. We deliver **one runnable artifact plus written verification evidence** within the stated 24-hour delivery window for a single bounded problem. This is not a subscription or an offer to operate your entire infrastructure.
+The proposed **¥10,000** was a preliminary, unvalidated price for a **single bounded technical task**, not a proven market value or a guaranteed 24-hour fix. The previous immediate-payment link is **paused**, because we have not verified an end-to-end paid-order intake, dispatch, delivery and refund workflow. **Please do not pay before the scope, price, delivery conditions and available capacity have been agreed.**
 
-**[Order the one-time Reliability Sprint (Stripe secure checkout)](https://buy.stripe.com/8x200j0ja9CL0jN0ZogjC0k)**. [Machine-readable scope, price and acceptance contract](./offers/agent-reliability-sprint.json) for AI agents and automated procurement. The current first-order link is limited to one completed checkout. Please do not share access tokens, private keys, customer data, internal-only URLs, or sensitive topology in the form. Any work on protected systems is outside this public-URL scope and requires separate permission and agreement.
+If you have one specific AI-agent integration or reliability problem involving a public repository or URL, use the [public-safe integration request form](https://github.com/AInoAKARI/keymaster-mcp/issues/new?template=integration-request.yml) first. Share the desired outcome, how it will be verified, and the authorized public scope. **No credentials, customer records or private infrastructure information in a public issue.**
 
-For a larger scope or a quote before payment, use the free [public-safe integration request form](https://github.com/AInoAKARI/keymaster-mcp/issues/new?template=integration-request.yml). Free Keymaster MCP and Outcome Contract remain open-source; paid implementation is **optional** and separate.
+We can then evaluate whether we can deliver a reproducible artifact and a truthful verification receipt. The cost and date will be specified in a separate accepted quote; an investigation cannot guarantee that every third-party problem is solvable. The free Keymaster MCP and Outcome Contract remain open source.
 
 ## The trust model
 
