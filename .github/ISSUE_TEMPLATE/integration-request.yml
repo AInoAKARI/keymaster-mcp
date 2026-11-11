@@ -1,0 +1,75 @@
+name: Production integration / paid implementation inquiry
+description: Request a scoped Keymaster MCP or Outcome Contract integration with a verifiable outcome. Public issue — never include secrets.
+title: "Integration inquiry: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Keymaster MCP is free, open-source software. You do not have to pay to use it.
+
+        This form is for people and organizations who want help with a specific, bounded production integration, migration or evidence-verification workflow, potentially as paid custom work.
+
+        This is a PUBLIC GitHub issue. Do not include real credentials, tokens, cookie values, employee/customer personal data, private infrastructure URLs, wallet keys, security-sensitive configuration or contractual information. We will not request secrets in an issue or chat.
+
+        Posting an inquiry does not constitute an order, a commitment to pay, or acceptance of commercial terms.
+  - type: dropdown
+    id: requested_capability
+    attributes:
+      label: What are you trying to integrate?
+      options:
+        - Keymaster MCP capability/status bridge
+        - Outcome Contract / external-evidence verification
+        - Multi-app agent orchestration and OAuth recovery
+        - Architecture review / migration
+        - Another related workflow
+    validations:
+      required: true
+  - type: textarea
+    id: actual_result
+    attributes:
+      label: Outcome you need
+      description: What observable real-world result would make this successful?
+      placeholder: Our agent should complete a permitted GitHub action while unrelated Stripe reauthentication waits, without copying raw credentials into prompts.
+    validations:
+      required: true
+  - type: textarea
+    id: systems
+    attributes:
+      label: Authorized systems (names only)
+      description: Public names of relevant providers or protocols, not your endpoints, credentials, team members or private topology.
+      placeholder: GitHub Actions, Google Workspace, HashiCorp Vault, Stripe, Vercel
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: How could success be verified?
+      description: Redacted provider events, measured human steps removed, deployed behavior, or an agreed acceptance check.
+      placeholder: A provider-native completion event without any credential appearing in model-visible data.
+    validations:
+      required: true
+  - type: dropdown
+    id: engagement
+    attributes:
+      label: What kind of support are you seeking?
+      options:
+        - Free community guidance / documentation
+        - One-time scoped paid implementation, subject to quote and agreement
+        - Evaluate options first; no commercial commitment
+    validations:
+      required: true
+  - type: textarea
+    id: schedule
+    attributes:
+      label: Timing and constraints (optional)
+      description: Share only public-safe constraints. Do not disclose internal budget approvals or private documents.
+      placeholder: Ideally this month; must avoid new infrastructure costs.
+    validations:
+      required: false
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Public issue acknowledgement
+      options:
+        - label: I have removed secrets, customer personal data and private infrastructure details from this public form.
+          required: true
