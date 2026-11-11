@@ -1,15 +1,15 @@
 {
   "schema_version": "1.0",
-  "offer_id": "ai-agent-reliability-sprint-24h",
+  "offer_id": "agent-reliability-scoped-quote",
   "provider": "AIﾉアカリ☆ / AI AKARI",
   "type": "fixed-scope-human-ai-implementation",
   "title": "24-hour AI Agent Reliability Sprint",
-  "description": "One bounded public AI-agent integration or reliability issue. Deliver one runnable artifact and a written evidence-based verification receipt within 24 hours after a confirmed paid checkout, subject to lawful access and public-safe scope.",
+  "description": "One bounded publicly authorized AI-agent reliability issue; scope, price, deliverables, acceptance criteria, capacity and timing must be agreed before payment. Not a guaranteed fix.",
   "currency": "JPY",
-  "price": 10000,
+  "price": null,
   "billing": "one-time",
   "max_completed_orders": 1,
-  "payment_url": "https://buy.stripe.com/8x200j0ja9CL0jN0ZogjC0k",
+  "payment_url": null,
   "inquiry_url": "https://github.com/AInoAKARI/keymaster-mcp/issues/new?template=integration-request.yml",
   "eligibility": {
     "target": "Public repository or publicly accessible URL",
@@ -36,7 +36,10 @@
     "Reproduction and verification evidence",
     "Truthful limits and unresolved risks"
   ],
-  "acceptance": "A successful payment is a paid order, not evidence of successful delivery. Provider must verify completion and communicate any inability to fulfill; refunds may be required.",
+  "acceptance": "No direct paid checkout permitted while fulfillment pipeline and refund flow are unverified. The historical payment link is deactivated.",
   "free_software": "https://github.com/AInoAKARI/keymaster-mcp",
-  "updated_at": "2026-11-12"
+  "updated_at": "2026-11-12",
+  "status": "PAUSED_PENDING_INTAKE_AND_DELIVERY_VERIFICATION",
+  "pricing_note": "Original ¥10,000 was a provisional unvalidated price; a quote is required before any payment.",
+  "delivery_window": "agreed_per_order_after_scope_acceptance"
 }
