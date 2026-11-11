@@ -12,6 +12,14 @@ Keymaster lets agents discover whether approved capabilities exist and whether t
 bounded permission → trusted execution → external evidence → accepted result → next permission
 ```
 
+## Interactive preflight lab (no secrets, no login)
+
+**[Try the agent continuity simulator](https://htmlpreview.github.io/?https://github.com/AInoAKARI/keymaster-mcp/blob/main/docs/preflight-lab.html)** — switch GitHub, Notion, and Stripe between ready / needs authorization / service unavailable. See which independent work can continue when one provider fails.
+
+This is a **public synthetic simulation**, not a connection to your accounts. It makes no API calls and does not collect credentials or personal information. The browser preview is hosted by a third-party GitHub HTML renderer; **do not enter secrets into it**. [Inspect the original standalone HTML source](./docs/preflight-lab.html).
+
+For an actual integration or a quote for bounded implementation work, use the [public-safe integration request form](https://github.com/AInoAKARI/keymaster-mcp/issues/new?template=integration-request.yml). The open-source software stays free; paid custom work is optional.
+
 ## Experience the philosophy without a credential
 
 ```bash
